@@ -14,24 +14,25 @@ Features:
 * Over TCP, so works pretty much everywhere, including on public wifi with only TCP port 443 open/available.
 * Uses only modern cryptography, with formally verified implementations: [charm](https://github.com/jedisct1/charm).
 * Small and constant memory footprint, no heap memory allocations.
-* Small single-binary (~25 kB), with a small and readable code base without external dependencies.
+* Small single-binary (~35 kB or ~15 kB compressed), with a small and readable code base without external dependencies.
 * Works out of the box: No lousy documentation to read. No configuration file. No post-configuration.
 * Runs with a single command on the server, and a single command on the client. No firewall or routing rules to mess with manually.
 * Works on Linux (kernel >= 3.17), macOS and OpenBSD, as well as DragonFly BSD, FreeBSD and NetBSD in client and point-to-point modes. Adding support for other operating systems is trivial.
 * Doesn't leak between reconnects if the network doesn't change. Blocks IPv6 on the client to prevent IPv6 leaks.
 
 ## Installation
-`make`
+
+Build it with: `make`
 
 On Raspberry Pi 3 & 4, build it like this to enable NEON optimizations:
 
 `env OPTFLAGS=-mfpu=neon make`
 
-Alternatively, if you have [zig](https://ziglang.org) installed, it can be used to compile DSVPN:
+Alternatively, if you have [zig](https://ziglang.org) installed, it can be used to compile `vpa`:
 
 `zig build`
 
-[notyet]: #(On macOS, `vpa` can be installed using Homebrew: `brew install vpa`.)
+<!--On macOS, `vpa` can be installed using Homebrew: `brew install vpa`.-->
 
 ## Make and copy secret key
 
