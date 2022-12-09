@@ -1,156 +1,118 @@
-# ![DSVPN](https://raw.github.com/jedisct1/dsvpn/master/logo.png)
+# ![vpa](https://raw.github.com/pepa65/vpa/master/logo.png)
+[![GitHub CI status](https://github.com/pepa65/vpa/workflows/CI/badge.svg)](https://github.com/pepa65/vpa/actions)
+[![Travis CI status](https://api.travis-ci.org/pepa65/vpa.svg?branch=master)](https://travis-ci.org/pepa65/vpa)
+![CodeQL scan](https://github.com/pepa65/vpa/workflows/CodeQL%20scan/badge.svg)
 
-[![GitHub CI status](https://github.com/jedisct1/dsvpn/workflows/CI/badge.svg)](https://github.com/jedisct1/dsvpn/actions)
-[![Travis CI status](https://api.travis-ci.org/jedisct1/dsvpn.svg?branch=master)](https://travis-ci.org/jedisct1/dsvpn)
-![CodeQL scan](https://github.com/jedisct1/dsvpn/workflows/CodeQL%20scan/badge.svg)
-
-DSVPN is a Dead Simple VPN, designed to address the most common use case for using a VPN:
+**vpa - Virtual Private Access: a dead simple VPN that just gives a client encrypted access to the server's internet**
 
 ```text
-[client device] ---- (untrusted/restricted network) ---- [vpn server] ---- [the Internet]
+[client]----(encrypted link)----[server]----(internet)
 ```
 
 Features:
 
-* Runs on TCP. Works pretty much everywhere, including on public WiFi where only TCP/443 is open or reliable.
-* Uses only modern cryptography, with formally verified implementations.
-* Small and constant memory footprint. Doesn't perform any heap memory allocations.
-* Small (~25 KB), with an equally small and readable code base. No external dependencies.
-* Works out of the box. No lousy documentation to read. No configuration file. No post-configuration. Run a single-line command on the server, a similar one on the client and you're done. No firewall and routing rules to manually mess with.
+* Over TCP, so works pretty much everywhere, including on public wifi with only TCP port 443 open/available.
+* Uses only modern cryptography, with formally verified implementations: [charm](https://github.com/jedisct1/charm).
+* Small and constant memory footprint, no heap memory allocations.
+* Small single-binary (~25 kB), with a small and readable code base without external dependencies.
+* Works out of the box: No lousy documentation to read. No configuration file. No post-configuration.
+* Runs with a single command on the server, and a single command on the client. No firewall or routing rules to mess with manually.
 * Works on Linux (kernel >= 3.17), macOS and OpenBSD, as well as DragonFly BSD, FreeBSD and NetBSD in client and point-to-point modes. Adding support for other operating systems is trivial.
 * Doesn't leak between reconnects if the network doesn't change. Blocks IPv6 on the client to prevent IPv6 leaks.
 
 ## Installation
+`make`
 
-```sh
-make
-```
+On Raspberry Pi 3 & 4, build it like this to enable NEON optimizations:
 
-On Raspberry Pi 3 and 4, use the following command instead to enable NEON optimizations:
-
-```sh
-env OPTFLAGS=-mfpu=neon make
-```
+`env OPTFLAGS=-mfpu=neon make`
 
 Alternatively, if you have [zig](https://ziglang.org) installed, it can be used to compile DSVPN:
 
-```sh
-zig build
-```
+`zig build`
 
-On macOS, DSVPN can be installed using Homebrew: `brew install dsvpn`.
+[notyet]: #(On macOS, `vpa` can be installed using Homebrew: `brew install vpa`.)
 
-## Secret key
+## Make and copy secret key
 
-DSVPN uses a shared secret. Create it with the following command:
+`vpa` uses a shared secret, create it with: `dd if=/dev/urandom of=vpa.key count=1 bs=32`
 
-```sh
-dd if=/dev/urandom of=vpn.key count=1 bs=32
-```
+Put the same key on the server and the client. If needed, the key can be exported & imported in printable form.
 
-And copy it on the server and the client.
+Output copiable form: `base64 <vpa.key`
 
-If required, keys can be exported and imported in printable form:
-
-```sh
-base64 < vpn.key
-echo 'HK940OkWcFqSmZXnCQ1w6jhQMZm0fZoEhQOOpzJ/l3w=' | base64 --decode > vpn.key
-```
+At the other machine do: `echo '(base64 form of key)' |base64 --decode >vpa.key`
 
 ## Example usage on the server
 
-```sh
-sudo ./dsvpn server vpn.key auto 1959
-```
+`sudo vpa server vpa.key`
 
-Here, I use port `1959`. Everything else is set to the default values. If you want to use the default port (`443`), it doesn't even have to be specified, so the parameters can just be `server vpn.key`
+`sudo vpa server vpa.key auto 12345`
+
+The first example uses port `443`, the default.
+The last example specifies port `12345`, and everything else is set to the default values.
 
 ## Example usage on the client
 
-```sh
-sudo ./dsvpn client vpn.key 34.216.127.34 1959
-```
+`sudo vpa client vpa.key (server IP or hostname)`
 
-This is a macOS client, connecting to the VPN server `34.216.127.34` on port `1959`. The port number is optional here as well. And the IP can be replaced by a host name.
+If a port different than `443` needs to be used, specify it after the server's IP or hostname.
 
 ## That's it
 
-You are connected. Just hit `Ctrl`-`C` to disconnect.
+Once the vpa-server is started and the vpa-client is started, the encrypted connection is established and the routing is arranged.
 
-Evaggelos Balaskas wrote a great blog post walking through the whole procedure: [A Dead Simple VPN](https://balaskas.gr/blog/2019/07/20/a-dead-simple-vpn/).
+To disconnect, hit `Ctrl-C` on either the client or server.
 
-He also maintains [systemd service files for DSVPN](https://github.com/ebal/scripts/tree/master/dsvpn). Thank you Evaggelos!
+## A note on client DNS
 
-## A note on DNS
+If the client was using a DNS resolver that's only accessible from the local network, it will no longer be accessible through the VPN.
+That would be the only issue that needs to be worked around. Use a public resolver, a fully local resolver, or DNSCrypt.
 
-If you were previously using a DNS resolver only accessible from the local network, it won't be accessible through the VPN. That might be the only thing you may have to change. Use a public resolver, a local resolver, or DNSCrypt.
+## Full & advanced configuration
 
-Or send a pull request implementing the required commands to change and revert the DNS settings, or redirect DNS queries to another resolver, for all supported operating systems.
-
-## Advanced configuration
+The arguments are given in this order, any values of `auto` at the end can be left off.
 
 ```text
-dsvpn   "server"
-        <key file>
-        <vpn server ip or name>|"auto"
-        <vpn server port>|"auto"
-        <tun interface>|"auto"
-        <local tun ip>|"auto"
-        <remote tun ip>"auto"
-        <external ip>|"auto"
+vpa server|client <key> <server> <port> <tunnel> <local IP> <remote IP> <external IP>|<gateway IP>
 
-dsvpn   "client"
-        <key file>
-        <vpn server ip or name>
-        <vpn server port>|"auto"
-        <tun interface>|"auto"
-        <local tun ip>|"auto"
-        <remote tun ip>|"auto"
-        <gateway ip>|"auto"
+vpa server
+    <key file>
+    <server IP or hostname> | auto
+    <server port> | auto
+    <tunnel name> | auto
+    <local tunnel IP> | auto
+    <remote tunnel IP> | auto
+    <external IP> | auto
+
+vpa client
+    <key file>
+    <server IP or hostname>
+    <server port> | auto
+    <tunnel name> | auto
+    <local tunnel IP> | auto
+    <remote tunnel IP> | auto
+    <gateway IP> | auto
 ```
 
-* `server`|`client`: use `server` on the server, and `client` on clients.
-* `<key file>`: path to the file with the secret key (e.g. `vpn.key`).
-* `<vpn server ip or name>`: on the client, it should be the IP address or the hostname of the server. On the server, it doesn't matter, so you can just use `auto`.
-* `<vpn server port>`: the TCP port to listen to/connect to for the VPN. Use 443 or anything else. `auto` will use `443`.
-* `<tun interface>`: this is the name of the VPN interface. On Linux, you can set it to anything. Or macOS, it has to follow a more boring pattern. If you feel lazy, just use `auto` here.
-* `<local tun ip>`: local IP address of the tunnel. Use any private IP address that you don't use here.
-* `<remote tun ip>`: remote IP address of the tunnel. See above. The local and remote tunnel IPs must the same on the client and on the server, just reversed. For some reason, I tend to pick `192.168.192.254` for the server, and `192.168.192.1` for the client. These values will be used if you put `auto` for the local and remote tunnel IPs.
-* `<external ip>` (server only): the external IP address of the server. Can be left to `"auto"`.
-* `<gateway ip>` (client only): the internal router IP address. The first line printed by `netstat -rn` will tell you (`gateway`).
-
-If all the remaining parameters of a command would be `auto`, they don't have to be specified.
-
-## Related projects
-
-* Robert Debock maintains [an Ansible role for DSVPN](https://github.com/robertdebock/ansible-role-dsvpn)
-* [OpenMPTCProuter](http://www.openmptcprouter.com/) is an OpenWRT-based router OS that supports DSVPN
-* Yecheng Fu maintains a [Docker image for DSVPN](https://github.com/cofyc/dsvpn-docker)
+* `server` or `client`: use `server` on the server, and `client` on clients.
+* `<key file>`: path to the file with the secret key (e.g. `vpa.key`).
+* `<server IP or hostname>`: on the client, it should be the IP address or hostname of the server.
+  The server will by default listen on all interfaces (using `auto`), or you can limit to a specified IP address.
+* `<server port>`: the TCP port to use for the VPN, `443` by default.
+* `<tunnel name>`: the name of the VPN interface device. On Linux can be set to anything.
+  On macOS, it has to follow a more boring pattern, best to use `auto` here.
+* `<local tunnel IP>`: local IP address of the tunnel. Use any **private** IP address that you don't use here.
+* `<remote tunnel IP>`: remote IP address of the tunnel. The client and server tunnel IPs must be the same on the client and on the server, just reversed! The defaults are `192.168.192.1` for the client and `192.168.192.254` for the server.
+* `<external IP>` (only for the server): the external IP address of the server, best left to `auto`.
+* `<gateway IP>` (only on the client): the router IP address, listed under Gateway by: `netstat -rn`
 
 ## Why
 
-I needed a VPN that works in an environment where only TCP/80 and TCP/443 are open.
+* Using TCP (most VPNs use UDP to not get bogged down, but with `BBR` congestion is minimal)
+* Over any accessible port (ports `80` and `443` are usually available)
+* Fully tunneled
+* Secure
+* Simple configuration
+* Simple usage
 
-WireGuard doesn't work over TCP.
-
-[GloryTun](https://github.com/angt/glorytun) is excellent, but requires post-configuration and the maintained branch uses UDP.
-
-I forgot about [VTUN-libsodium](https://github.com/jedisct1/vtun). But it would have been too much complexity and attack surface for a simple use case.
-
-OpenVPN is horribly difficult to set up.
-
-Sshuttle is very nice and I've been using it a lot in the past, but it's not a VPN. It doesn't tunnel non-TCP traffic. It also requires a full Python install, which I'd rather avoid on my router.
-
-Everything else I looked at was either too difficult to use, slow, bloated, didn't work on macOS, didn't work on small devices, was complicated to cross-compile due to dependencies, wasn't maintained, or didn't feel secure.
-
-TCP-over-TCP is not as bad as some documents describe. It works surprisingly well in practice, especially with modern congestion control algorithms (BBR). For traditional algorithms that rely on packet loss, DSVPN couples the inner and outer congestion controllers by lowering `TCP_NOTSENT_LOWAT` and dropping packets when congestion is detected at the outer layer.
-
-## Cryptography
-
-The cryptographic primitives used in DSVPN are available as a standalone project: [Charm](https://github.com/jedisct1/charm).
-
-## Guarantees, support, feature additions
-
-None.
-
-This is not intended to be a replacement for GloryTun or WireGuard. This is what I use, because it solves a problem I had. Extending it to solve different problems is not planned, but feel free to fork it and tailor it to your needs!

@@ -30,12 +30,14 @@
 *.su
 *.x86_64
 *~
+.cflags
+.test.c
 .tmp_versions/
 .vscode
 Mkfile.old
 Module.symvers
 dkms.conf
-dsvpn
+vpa
 key
 modules.order
 zig-out

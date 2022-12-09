@@ -2,21 +2,21 @@ CFLAGS_FILE?=.cflags
 COMPILE_TEST_FILE?=.test.c
 PREFIX?=/usr/local
 
-all: dsvpn
+all: vpa
 
-dsvpn: $(CFLAGS_FILE) Makefile src/vpn.c src/charm.c src/os.c include/charm.h include/vpn.h include/os.h
+vpa: $(CFLAGS_FILE) Makefile src/vpn.c src/charm.c src/os.c include/charm.h include/vpn.h include/os.h
 	$(CC) $$(cat "$(CFLAGS_FILE)") $(OPTFLAGS) -Iinclude -o $@ src/vpn.c src/charm.c src/os.c
 	strip $@
 
-install: dsvpn
+install: vpa
 	install -d $(PREFIX)/sbin
-	install -m 0755 dsvpn $(PREFIX)/sbin
+	install -m 0755 vpa $(PREFIX)/sbin
 
 uninstall:
-	rm -f $(PREFIX)/sbin/dsvpn
+	rm -f $(PREFIX)/sbin/vpa
 
 clean:
-	rm -f dsvpn *~ $(CFLAGS_FILE) $(COMPILE_TEST_FILE)
+	rm -f vpa *~ $(CFLAGS_FILE) $(COMPILE_TEST_FILE)
 
 $(CFLAGS_FILE):
 	@CFLAGS="$(CFLAGS)"

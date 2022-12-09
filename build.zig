@@ -4,13 +4,13 @@ const builtin = @import("builtin");
 pub fn build(b: *std.build.Builder) !void {
     var target = b.standardTargetOptions(.{});
 
-    const dsvpn = b.addExecutable("dsvpn", null);
-    dsvpn.setTarget(target);
-    dsvpn.setBuildMode(.ReleaseSmall);
-    dsvpn.install();
-    dsvpn.linkLibC();
+    const vpa = b.addExecutable("vpa", null);
+    vpa.setTarget(target);
+    vpa.setBuildMode(.ReleaseSmall);
+    vpa.install();
+    vpa.linkLibC();
 
-    dsvpn.addIncludeDir("include");
-    dsvpn.defineCMacro("_GNU_SOURCE", "1");
-    dsvpn.addCSourceFiles(&.{ "src/charm.c", "src/os.c", "src/vpn.c" }, &.{});
+    vpa.addIncludeDir("include");
+    vpa.defineCMacro("_GNU_SOURCE", "1");
+    vpa.addCSourceFiles(&.{ "src/charm.c", "src/os.c", "src/vpn.c" }, &.{});
 }
