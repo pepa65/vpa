@@ -22,7 +22,9 @@ Features:
 
 ## Installation
 
-Build it with: `make`
+Build it with:
+
+`make`
 
 On Raspberry Pi 3 & 4, build it like this to enable NEON optimizations:
 
@@ -36,13 +38,19 @@ Alternatively, if you have [zig](https://ziglang.org) installed, it can be used 
 
 ## Make and copy secret key
 
-`vpa` uses a shared secret, create it with: `dd if=/dev/urandom of=vpa.key count=1 bs=32`
+`vpa` uses a shared secret, create it with:
+
+`dd if=/dev/urandom of=vpa.key count=1 bs=32`
 
 Put the same key on the server and the client. If needed, the key can be exported & imported in printable form.
 
-Output copiable form: `base64 <vpa.key`
+Output copiable form:
 
-At the other machine do: `echo '(base64 form of key)' |base64 --decode >vpa.key`
+`base64 <vpa.key`
+
+At the other machine do (paste the copied base64 form of the key between the quotes!):
+
+`echo '' |base64 --decode >vpa.key`
 
 ## Example usage on the server
 
@@ -51,19 +59,18 @@ At the other machine do: `echo '(base64 form of key)' |base64 --decode >vpa.key`
 `sudo vpa server vpa.key auto 12345`
 
 The first example uses port `443`, the default.
-The last example specifies port `12345`, and everything else is set to the default values.
+The second example specifies port `12345`, and everything else is set to the default values.
 
 ## Example usage on the client
 
-`sudo vpa client vpa.key (server IP or hostname)`
+`sudo vpa client vpa.key my.doma.in`
 
 If a port different than `443` needs to be used, specify it after the server's IP or hostname.
 
 ## That's it
 
-Once the vpa-server is started and the vpa-client is started, the encrypted connection is established and the routing is arranged.
-
-To disconnect, hit `Ctrl-C` on either the client or server.
+Once both the server and the client are started, the encrypted connection is established and the routing is arranged.
+To disconnect, hit `Ctrl-C` on either the client or the server.
 
 ## A note on client DNS
 
