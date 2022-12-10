@@ -35,7 +35,7 @@
 #include <sys/sys_domain.h>
 #endif
 
-#define VERSION_STRING "0.1.4"
+#define VERSION_STRING "0.2.0"
 
 #ifdef __NetBSD__
 #define DEFAULT_MTU 1500
@@ -51,8 +51,8 @@
 #define OUTER_CONGESTION_CONTROL_ALG "bbr"
 #define BUFFERBLOAT_CONTROL 1
 #define NOTSENT_LOWAT (128 * 1024)
-#define DEFAULT_CLIENT_IP "192.168.192.1"
-#define DEFAULT_SERVER_IP "192.168.192.254"
+#define DEFAULT_CLIENT_IP "10.10.10.10"
+#define DEFAULT_SERVER_IP "10.10.10.1"
 #define DEFAULT_PORT "443"
 
 #if defined(__BYTE_ORDER__) && defined(__ORDER_BIG_ENDIAN__) && \

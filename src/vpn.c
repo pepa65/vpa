@@ -509,20 +509,22 @@ static int load_key_file(Context *context, const char *file)
 
 __attribute__((noreturn)) static void usage(void)
 {
-    puts("vpa " VERSION_STRING
-         " usage:\n"
-         "\n"
-         "vpa\t\"server\"\n\t<key file>\n\t<vpn server ip or name>|\"auto\"\n\t<vpn "
-         "server port>|\"auto\"\n\t<tun interface>|\"auto\"\n\t<local tun "
-         "ip>|\"auto\"\n\t<remote tun ip>\"auto\"\n\t<external ip>|\"auto\""
-         "\n\n"
-         "vpa\t\"client\"\n\t<key file>\n\t<vpn server ip or name>\n\t<vpn server "
-         "port>|\"auto\"\n\t<tun interface>|\"auto\"\n\t<local tun "
-         "ip>|\"auto\"\n\t<remote tun ip>|\"auto\"\n\t<gateway ip>|\"auto\"\n\n"
-         "Example:\n\n[server]\n\tdd if=/dev/urandom of=vpn.key count=1 bs=32\t# create key\n"
-         "\tbase64 < vpn.key\t\t# copy key as a string\n\tsudo ./vpa server vpn.key\t# listen on "
-         "443\n\n[client]\n\techo ohKD...W4= | base64 --decode > vpn.key\t# paste key\n"
-         "\tsudo ./vpa client vpn.key 34.216.127.34\n");
+    puts("vpa v" VERSION_STRING " - Virtual Private Access: a Dead Simple VPN\n\n"
+        "Server: vpa [-s|--server] [<listenIP> <port> <serverIP> <clientIP>] [<keyfile>]\n"
+        "Client: vpa <server> [<port> <serverIP> <clientIP> <routerIP>] [<keyfile>]\n\n"
+        "Server:\n"
+        "  -s|--server:  Run as VPN server (if not given: run as client).\n"
+        "  <listenIP>:   For the server: the IP address to listen on (default: 0.0.0.0).\n"
+        "Client:\n"
+        "  <server>:     Mandatory: the IP or hostname of the VPN server to connect to.\n"
+        "  <routerIP>:   The IP for the client to tunnel over (default: routing table).\n"
+        "Common:\n"
+        "  <port>:       The server port to connect through (default: 443).\n"
+        "  <serverIP>:   The tunnel IP of the VPN server (default: 10.11.12.1).\n"
+        "  <clientIP>:   The tunnel IP of the client (default: 10.11.12.13).\n"
+        "  <keyfile>:    Shared secret (defaults to ./vpa.key or else ~/vpa.key).\n"
+        "All arguments are position-sensitive, and when marked with '-' or left off\n"
+        "(on the right hand side), they will take their default values.");
     exit(254);
 }
 
@@ -570,19 +572,19 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Unable to load the key file [%s]\n", argv[2]);
         return 1;
     }
-    context.server_ip_or_name = (argc <= 3 || strcmp(argv[3], "auto") == 0) ? NULL : argv[3];
+    context.server_ip_or_name = (argc <= 3 || strcmp(argv[3], "-") == 0) ? NULL : argv[3];
     if (context.server_ip_or_name == NULL && !context.is_server) {
         usage();
     }
-    context.server_port    = (argc <= 4 || strcmp(argv[4], "auto") == 0) ? DEFAULT_PORT : argv[4];
-    context.wanted_if_name = (argc <= 5 || strcmp(argv[5], "auto") == 0) ? NULL : argv[5];
-    context.local_tun_ip   = (argc <= 6 || strcmp(argv[6], "auto") == 0)
+    context.server_port    = (argc <= 4 || strcmp(argv[4], "-") == 0) ? DEFAULT_PORT : argv[4];
+    context.wanted_if_name = (argc <= 5 || strcmp(argv[5], "-") == 0) ? NULL : argv[5];
+    context.local_tun_ip   = (argc <= 6 || strcmp(argv[6], "-") == 0)
                                ? (context.is_server ? DEFAULT_SERVER_IP : DEFAULT_CLIENT_IP)
                                : argv[6];
-    context.remote_tun_ip = (argc <= 7 || strcmp(argv[7], "auto") == 0)
+    context.remote_tun_ip = (argc <= 7 || strcmp(argv[7], "-") == 0)
                                 ? (context.is_server ? DEFAULT_CLIENT_IP : DEFAULT_SERVER_IP)
                                 : argv[7];
-    context.wanted_ext_gw_ip = (argc <= 8 || strcmp(argv[8], "auto") == 0) ? NULL : argv[8];
+    context.wanted_ext_gw_ip = (argc <= 8 || strcmp(argv[8], "-") == 0) ? NULL : argv[8];
     ext_gw_ip = context.wanted_ext_gw_ip ? context.wanted_ext_gw_ip : get_default_gw_ip();
     snprintf(context.ext_gw_ip, sizeof context.ext_gw_ip, "%s", ext_gw_ip == NULL ? "" : ext_gw_ip);
     if (ext_gw_ip == NULL && !context.is_server) {

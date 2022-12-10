@@ -26,8 +26,8 @@ $(CFLAGS_FILE):
 			for flag in -march=native -mtune=native -Ofast -Wno-unused-command-line-argument; do \
 				$(CC) $${CFLAGS} $${flag} "$(COMPILE_TEST_FILE)" >/dev/null 2>&1 && CFLAGS="$$CFLAGS $$flag"; \
 			done; \
-			rm -f a.out \
+			rm -f a.out; \
 			CFLAGS="$${CFLAGS} -Wall -W -Wshadow -Wmissing-prototypes"; \
-		fi \
+		fi; \
 	fi; \
 	echo "$$CFLAGS" > "$(CFLAGS_FILE)"
