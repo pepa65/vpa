@@ -1,0 +1,11 @@
+stages:
+  - build
+
+building:
+  stage: build
+  script:
+    - make
+  artifacts:
+    name: vpa
+    paths:
+     - vpa
