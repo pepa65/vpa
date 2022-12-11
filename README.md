@@ -25,6 +25,9 @@ Features:
   Adding support for other operating systems is trivial.
 * Doesn't leak between reconnects if the network doesn't change. Blocks IPv6 on the client to prevent IPv6 leaks.
 
+The code of `vpa` is cloned from [dsvpn](https://github.com/jedisct1/dsvpn) and only the user interface (CLI) is modified
+to make it even easier to run. Apart from that it is fully compatible. All praise to [Frank Denis](https://github.com/jedisct1)!
+
 ## Installation
 
 Build it with:
