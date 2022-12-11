@@ -501,6 +501,7 @@ static int load_key_file(Context *context, const char *file)
         (void) close(fd);
         return -1;
     }
+		printf("Using keyfile %s\n", file);
     uc_state_init(context->uc_kx_st, key, (const unsigned char *) "VPN Key Exchange");
     uc_memzero(key, sizeof key);
 
@@ -510,18 +511,19 @@ static int load_key_file(Context *context, const char *file)
 __attribute__((noreturn)) static void usage(void)
 {
     puts("vpa v" VERSION_STRING " - Virtual Private Access: a Dead Simple VPN\n\n"
-        "Server: vpa [-s|--server] [<listenIP> <port> <serverIP> <clientIP>] [<keyfile>]\n"
-        "Client: vpa <server> [<port> <serverIP> <clientIP> <routerIP>] [<keyfile>]\n\n"
+        "Server:  vpa -s|--server [<listenIP>] [<options>]\n"
+        "Client:  vpa <server> [<options>]\n"
+        "  <options>:    <port> <serverIP> <clientIP> <gatewayIP> <keyfile>\n\n"
         "Server:\n"
         "  -s|--server:  Run as VPN server (if not given: run as client).\n"
         "  <listenIP>:   For the server: the IP address to listen on (default: 0.0.0.0).\n"
         "Client:\n"
         "  <server>:     Mandatory: the IP or hostname of the VPN server to connect to.\n"
-        "  <routerIP>:   The IP for the client to tunnel over (default: routing table).\n"
         "Common:\n"
         "  <port>:       The server port to connect through (default: 443).\n"
-        "  <serverIP>:   The tunnel IP of the VPN server (default: 10.11.12.1).\n"
-        "  <clientIP>:   The tunnel IP of the client (default: 10.11.12.13).\n"
+        "  <serverIP>:   The server-side tunnel IP (default: 10.11.12.1).\n"
+        "  <clientIP>:   The client-side tunnel IP (default: 10.11.12.13).\n"
+        "  <gatewayIP>:  The gateway IP to tunnel through (default: from routing table).\n"
         "  <keyfile>:    Shared secret (defaults to ./vpa.key or else ~/vpa.key).\n"
         "All arguments are position-sensitive, and when marked with '-' or left off\n"
         "(on the right hand side), they will take their default values.");
@@ -560,31 +562,47 @@ static int resolve_ip(char *ip, size_t sizeof_ip, const char *ip_or_name)
 
 int main(int argc, char *argv[])
 {
-    Context     context;
+    Context context;
     const char *ext_gw_ip;
+    const char *keyfile = strcat(getenv("HOME"), "/vpa.key");
 
-    if (argc < 3) {
+    if (argc <= 1) { // No arguments: help
         usage();
     }
     memset(&context, 0, sizeof context);
-    context.is_server = strcmp(argv[1], "server") == 0;
-    if (load_key_file(&context, argv[2]) != 0) {
-        fprintf(stderr, "Unable to load the key file [%s]\n", argv[2]);
-        return 1;
+    if (strcmp(argv[1], "--server") == 0 || strcmp(argv[1], "-s") == 0) {
+        context.is_server = 1;
+        // shift arguments to align server and client arguments
+        for(int i = 1; i < argc; ++i) {
+            argv[i]  = argv[i+1];
+        }
+        --argc;
+        // 1:<listenIP> 2:<port> 3:<serverIP> 4:<clientIP> 5:<routeIP> 6:<keyfile>
+        context.server_ip_or_name = (argc <= 1 || strcmp(argv[1], "-") == 0) ? NULL : argv[1];
+        context.local_tun_ip = (argc <= 3 || strcmp(argv[3], "-") == 0) ? DEFAULT_SERVER_IP : argv[3];
+        context.remote_tun_ip = (argc <= 4 || strcmp(argv[4], "-") == 0) ? DEFAULT_CLIENT_IP : argv[4];
+    } else {
+        // 1:<server> 2:<port> 3:<serverIP> 4:<clientIP> 5:<routeIP> 6:<keyfile>
+        context.is_server = 0;
+        context.server_ip_or_name = (argc <= 1 || strcmp(argv[1], "-") == 0) ? NULL : argv[1];
+        if (context.server_ip_or_name == NULL) {
+            usage();
+        }
+        context.local_tun_ip = (argc <= 4 || strcmp(argv[4], "-") == 0) ? DEFAULT_CLIENT_IP : argv[4];
+        context.remote_tun_ip = (argc <= 3 || strcmp(argv[3], "-") == 0) ? DEFAULT_SERVER_IP : argv[3];
     }
-    context.server_ip_or_name = (argc <= 3 || strcmp(argv[3], "-") == 0) ? NULL : argv[3];
-    if (context.server_ip_or_name == NULL && !context.is_server) {
-        usage();
+    // Check presence of default keyfiles
+    if (load_key_file(&context, keyfile+strlen(keyfile)-7) != 0) {
+        if (load_key_file(&context, keyfile) != 0) {
+            if (argc <= 6 || load_key_file(&context, argv[6]) != 0) {
+                fprintf(stderr, "Unable to load the key file [%s]\n", argv[6]);
+                return 1;
+            }
+        }
     }
-    context.server_port    = (argc <= 4 || strcmp(argv[4], "-") == 0) ? DEFAULT_PORT : argv[4];
-    context.wanted_if_name = (argc <= 5 || strcmp(argv[5], "-") == 0) ? NULL : argv[5];
-    context.local_tun_ip   = (argc <= 6 || strcmp(argv[6], "-") == 0)
-                               ? (context.is_server ? DEFAULT_SERVER_IP : DEFAULT_CLIENT_IP)
-                               : argv[6];
-    context.remote_tun_ip = (argc <= 7 || strcmp(argv[7], "-") == 0)
-                                ? (context.is_server ? DEFAULT_CLIENT_IP : DEFAULT_SERVER_IP)
-                                : argv[7];
-    context.wanted_ext_gw_ip = (argc <= 8 || strcmp(argv[8], "-") == 0) ? NULL : argv[8];
+    context.server_port = (argc <= 2 || strcmp(argv[2], "-") == 0) ? DEFAULT_PORT : argv[2];
+    context.wanted_if_name = NULL;
+    context.wanted_ext_gw_ip = (argc <= 5 || strcmp(argv[5], "-") == 0) ? NULL : argv[5];
     ext_gw_ip = context.wanted_ext_gw_ip ? context.wanted_ext_gw_ip : get_default_gw_ip();
     snprintf(context.ext_gw_ip, sizeof context.ext_gw_ip, "%s", ext_gw_ip == NULL ? "" : ext_gw_ip);
     if (ext_gw_ip == NULL && !context.is_server) {

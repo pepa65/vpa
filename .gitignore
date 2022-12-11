@@ -42,3 +42,4 @@ key
 modules.order
 zig-out
 zig-cache
+vpa.key

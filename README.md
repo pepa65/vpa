@@ -1,14 +1,17 @@
 # ![vpa](https://raw.github.com/pepa65/vpa/master/logo.png)
 
 [![GitHub CI status](https://github.com/pepa65/vpa/workflows/CI/badge.svg)](https://github.com/pepa65/vpa/actions)
-[![Travis CI status](https://api.travis-ci.org/pepa65/vpa.svg?branch=master)](https://travis-ci.org/pepa65/vpa)
 ![CodeQL scan](https://github.com/pepa65/vpa/workflows/CodeQL%20scan/badge.svg)
 
 **vpa - Virtual Private Access: a dead simple VPN that just gives a client encrypted access to the server's internet**
 
 ```text
-[client]----(encrypted link)----[server]----(internet)
+[client]---(encrypted tunnel)---[server]---(internet)
 ```
+
+Both the VPN server and client have the same tiny single-binary application that can be compiled for all platforms.
+The only thing that is needed to establish a VPN connection is to have the binary present on both the server and
+the client, and to have the same 32-byte keyfile present on both sides.
 
 Features:
 
@@ -77,7 +80,8 @@ To disconnect, hit `Ctrl-C` on either the client or the server.
 
 To start the server automatically on bootup, a `systemd` service unit can be used.
 In `/etc/systemd/system/vpa.service` put the following:
-```
+
+```text
 [Unit]
 Description=Virtual Private Access VPN Server
 
@@ -102,19 +106,20 @@ That would be the only issue that needs to be worked around. Use a public resolv
 ## Full & advanced configuration
 
 ```text
-Server: vpa [-s|--server] [<listenIP> <port> <serverIP> <clientIP>] [<keyfile>]
-Client: vpa <server> [<port> <serverIP> <clientIP> <routerIP>] [<keyfile>]
+Server:  vpa -s|--server [<listenIP>] [<options>]
+Client:  vpa <server> [<options>]
+  <options>:    <port> <serverIP> <clientIP> <gatewayIP> <keyfile>
 
 Server:
   -s|--server:  Run as VPN server (if not given: run as client).
   <listenIP>:   For the server: the IP address to listen on (default: 0.0.0.0).
 Client:
   <server>:     Mandatory: the IP or hostname of the VPN server to connect to.
-  <routerIP>:   The IP for the client to tunnel over (default: routing table).
 Common:
   <port>:       The server port to connect through (default: 443).
-  <serverIP>:   The tunnel IP of the VPN server (default: 10.11.12.1).
-  <clientIP>:   The tunnel IP of the client (default: 10.11.12.13).
+  <serverIP>:   The server-side tunnel IP (default: 10.11.12.1).
+  <clientIP>:   The client-side tunnel IP (default: 10.11.12.13).
+  <gatewayIP>:  The gateway IP to tunnel through (default: from routing table).
   <keyfile>:    Shared secret (defaults to ./vpa.key or else ~/vpa.key).
 All arguments are position-sensitive, and when marked with '-' or left off
 (on the right hand side), they will take their default values.
@@ -123,12 +128,17 @@ All arguments are position-sensitive, and when marked with '-' or left off
 * Use `-s` or `--server` for the server.
 * The server listens on all interfaces by default, or can be limited to the IP address given in `<listenIP>`.
 * For the client, `<server>` must be specified: the IP address or hostname of the VPN server.
-* `<routerIP>` (only on the client): the router IP address, by default as shown by: `ip r show default`.
-* `<port>`: the TCP port to use for the VPN, `443` by default.
-* `<serverIP>`: server IP address of the tunnel. The client and server tunnel IPs must be the same on the client and on the server.
+* `<port>`: The TCP port to use for the VPN, `443` by default.
+* `<serverIP>`: Server IP address of the tunnel. The client and server tunnel IPs must be the same on the client and on the server.
   Use any **private** IP address subnet (`10.*.*.*`, `172.16-31.*.*`, `192.168.*.*`) here that is not in use, default `10.11.12.1`.
-* `<clientIP>`: client IP address of the tunnel, default `10.11.12.13`.
-* `<keyfile>`: path to the file with the secret key, can be left off if it is `./vpa.key` or if that is not present: `~/vpa.key`.
+* `<clientIP>`: Client IP address of the tunnel, default `10.11.12.13`.
+* `<gatewayIP>`: The gateway IP address to tunnel through, by default as shown by: `ip r show default`.
+* `<keyfile>`: Path to the file with the secret key, can be left off if it is `./vpa.key` or if that is not present: `~/vpa.key`.
+
+The routing rules are all automatically set up when run, and torn down when exited. To make `vpa` operate without setting up
+routing rules, build the binary with:
+
+`make NO_DEFAULT_ROUTES=1`
 
 ## Why
 
