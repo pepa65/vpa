@@ -33,7 +33,7 @@ Build it with:
 
 On Raspberry Pi 3 & 4, build it like this to enable NEON optimizations:
 
-`env OPTFLAGS=-mfpu=neon make`
+`make mfpu=neon`
 
 Alternatively, if you have [zig](https://ziglang.org) installed, it can be used to compile `vpa`:
 
