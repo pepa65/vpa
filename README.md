@@ -30,6 +30,13 @@ to make it even easier to run. Apart from that it is fully compatible. All prais
 
 ## Installation
 
+Download the [amd64/x86_64 binary](https://gitlab.com/pepa65/vpa/-/jobs/artifacts/master/raw/vpa?job=building)
+or clone the repository with:
+
+`git clone https://gitlab.com/pepa65/vpa`
+
+`cd vpa`
+
 Build it with:
 
 `make`
