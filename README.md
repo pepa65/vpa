@@ -39,6 +39,10 @@ Alternatively, if you have [zig](https://ziglang.org) installed, it can be used 
 
 `zig build`
 
+Install with:
+
+`sudo make install`
+
 <!--On macOS, `vpa` can be installed using Homebrew: `brew install vpa`.-->
 
 ## Make and copy secret key
@@ -60,16 +64,16 @@ At the other machine do (paste the copied base64 form of the key between the quo
 
 ## Run the server
 
-`sudo vpa server vpa.key`
+`sudo vpa --server`
 
-`sudo vpa server vpa.key - 12345`
+`sudo vpa -s - 12345`
 
 The first example uses port `443`, the default.
 The second example specifies port `12345`, and everything else is set to the default values.
 
 ## Run the client
 
-`sudo vpa client vpa.key my.doma.in`
+`sudo vpa my.doma.in`
 
 If a port different than `443` needs to be used, specify it after the server's IP or hostname.
 
