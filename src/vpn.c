@@ -75,7 +75,7 @@ static int firewall_rules(Context *context, int set, int silent)
     }
     for (i = 0; cmds[i] != NULL; i++) {
         if (shell_cmd(substs, cmds[i], silent) != 0) {
-            fprintf(stderr, "Unable to run [%s]: [%s]\n", cmds[i], strerror(errno));
+            fprintf(stderr, "Unable to run '%s': %s\n", cmds[i], strerror(errno));
             return -1;
         }
     }
@@ -98,7 +98,7 @@ static int tcp_client(const char *address, const char *port)
     hints.ai_addr     = NULL;
     if ((eai = getaddrinfo(address, port, &hints, &res)) != 0 ||
         (res->ai_family != AF_INET && res->ai_family != AF_INET6)) {
-        fprintf(stderr, "Unable to create the client socket: [%s]\n", gai_strerror(eai));
+        fprintf(stderr, "Unable to create the client socket: %s\n", gai_strerror(eai));
         errno = EINVAL;
         return -1;
     }
@@ -134,7 +134,7 @@ static int tcp_listener(const char *address, const char *port)
 #endif
     if ((eai = getaddrinfo(address, port, &hints, &res)) != 0 ||
         (res->ai_family != AF_INET && res->ai_family != AF_INET6)) {
-        fprintf(stderr, "Unable to create the listening socket: [%s]\n", gai_strerror(eai));
+        fprintf(stderr, "Unable to create the listening socket: %s\n", gai_strerror(eai));
         errno = EINVAL;
         return -1;
     }
@@ -240,12 +240,12 @@ static int tcp_accept(Context *context, int listen_fd)
     }
     getnameinfo((const struct sockaddr *) (const void *) &client_ss, client_ss_len, client_ip,
                 sizeof client_ip, NULL, 0, NI_NUMERICHOST | NI_NUMERICSERV);
-    printf("Connection attempt from [%s]\n", client_ip);
+    printf("Connection attempt from %s\n", client_ip);
     context->congestion = 0;
     fcntl(client_fd, F_SETFL, fcntl(client_fd, F_GETFL, 0) | O_NONBLOCK);
     if (context->client_fd != -1 &&
         memcmp(context->client_ip, client_ip, sizeof context->client_ip) != 0) {
-        fprintf(stderr, "Closing: a session from [%s] is already active\n", context->client_ip);
+        fprintf(stderr, "Closing: a session from %s is already active\n", context->client_ip);
         (void) close(client_fd);
         errno = EBUSY;
         return -1;
@@ -303,7 +303,7 @@ static int client_connect(Context *context)
 #ifndef NO_DEFAULT_ROUTES
     if (context->wanted_ext_gw_ip == NULL && (ext_gw_ip = get_default_gw_ip()) != NULL &&
         strcmp(ext_gw_ip, context->ext_gw_ip) != 0) {
-        printf("Gateway changed from [%s] to [%s]\n", context->ext_gw_ip, ext_gw_ip);
+        printf("Gateway changed from %s to %s\n", context->ext_gw_ip, ext_gw_ip);
         firewall_rules(context, 0, 0);
         snprintf(context->ext_gw_ip, sizeof context->ext_gw_ip, "%s", ext_gw_ip);
         firewall_rules(context, 1, 0);
@@ -481,7 +481,7 @@ static int doit(Context *context)
         };
     }
     if (!context->is_server && client_reconnect(context) != 0) {
-        fprintf(stderr, "Unable to connect to server: [%s]\n", strerror(errno));
+        fprintf(stderr, "Unable to connect to server: %s\n", strerror(errno));
         return -1;
     }
     while (event_loop(context) == 0)
@@ -508,25 +508,28 @@ static int load_key_file(Context *context, const char *file)
     return close(fd);
 }
 
-__attribute__((noreturn)) static void usage(void)
+__attribute__((noreturn)) static void usage(char *msg)
 {
     puts("vpa v" VERSION_STRING " - Virtual Private Access: a Dead Simple VPN\n\n"
-        "Server:  vpa -s|--server [<listenIP>] [<options>]\n"
-        "Client:  vpa <server> [<options>]\n"
-        "  <options>:    <port> <serverIP> <clientIP> <gatewayIP> <keyfile>\n\n"
-        "Server:\n"
-        "  -s|--server:  Run as VPN server (if not given: run as client).\n"
-        "  <listenIP>:   For the server: the IP address to listen on (default: 0.0.0.0).\n"
+        "Client: vpa <server> [<port> <serverIP> <clientIP> <gwIP> <keyfile>]\n"
+        "Server: vpa -s|--server [<IP> <port> <serverIP> <clientIP> <gwIP> <keyfile>]\n\n"
         "Client:\n"
         "  <server>:     Mandatory: the IP or hostname of the VPN server to connect to.\n"
+        "Server:\n"
+        "  -s|--server:  Run as VPN server (if not given: run as client).\n"
+        "  <IP>:         The IP address the server listens on (default is all: 0.0.0.0).\n"
         "Common:\n"
         "  <port>:       The server port to connect through (default: 443).\n"
         "  <serverIP>:   The server-side tunnel IP (default: 10.11.12.1).\n"
         "  <clientIP>:   The client-side tunnel IP (default: 10.11.12.13).\n"
-        "  <gatewayIP>:  The gateway IP to tunnel through (default: from routing table).\n"
+        "  <gwIP>:       The gateway IP to tunnel through (default: from routing table).\n"
         "  <keyfile>:    Shared secret (defaults to ./vpa.key or else ~/vpa.key).\n"
         "All arguments are position-sensitive, and when marked with '-' or left off\n"
         "(on the right hand side), they will take their default values.");
+    if (strlen(msg) > 0) {
+        puts("");
+        puts(msg);
+    }
     exit(254);
 }
 
@@ -554,7 +557,7 @@ static int resolve_ip(char *ip, size_t sizeof_ip, const char *ip_or_name)
         (res->ai_family != AF_INET && res->ai_family != AF_INET6) ||
         (eai = getnameinfo(res->ai_addr, res->ai_addrlen, ip, (socklen_t) sizeof_ip, NULL, 0,
                            NI_NUMERICHOST | NI_NUMERICSERV)) != 0) {
-        fprintf(stderr, "Unable to resolve [%s]: [%s]\n", ip_or_name, gai_strerror(eai));
+        fprintf(stderr, "Unable to resolve %s: %s\n", ip_or_name, gai_strerror(eai));
         return -1;
     }
     return 0;
@@ -567,10 +570,13 @@ int main(int argc, char *argv[])
     const char *keyfile = strcat(getenv("HOME"), "/vpa.key");
 
     if (argc <= 1) { // No arguments: help
-        usage();
+        usage("");
     }
     memset(&context, 0, sizeof context);
     if (strcmp(argv[1], "--server") == 0 || strcmp(argv[1], "-s") == 0) {
+        if (argc > 8) { // Too many arguments: help
+            usage("Error: too many arguments");
+        }
         context.is_server = 1;
         // shift arguments to align server and client arguments
         for(int i = 1; i < argc; ++i) {
@@ -582,22 +588,30 @@ int main(int argc, char *argv[])
         context.local_tun_ip = (argc <= 3 || strcmp(argv[3], "-") == 0) ? DEFAULT_SERVER_IP : argv[3];
         context.remote_tun_ip = (argc <= 4 || strcmp(argv[4], "-") == 0) ? DEFAULT_CLIENT_IP : argv[4];
     } else {
-        // 1:<server> 2:<port> 3:<serverIP> 4:<clientIP> 5:<routeIP> 6:<keyfile>
+       // 1:<server> 2:<port> 3:<serverIP> 4:<clientIP> 5:<routeIP> 6:<keyfile>
+        if (argc > 7) { // Too many arguments: help
+            usage("Error: too many arguments");
+        }
         context.is_server = 0;
-        context.server_ip_or_name = (argc <= 1 || strcmp(argv[1], "-") == 0) ? NULL : argv[1];
+        context.server_ip_or_name = (strcmp(argv[1], "-") == 0) ? NULL : argv[1];
         if (context.server_ip_or_name == NULL) {
-            usage();
+            usage("Error: must have an IP or hostname for the client to connect to");
         }
         context.local_tun_ip = (argc <= 4 || strcmp(argv[4], "-") == 0) ? DEFAULT_CLIENT_IP : argv[4];
         context.remote_tun_ip = (argc <= 3 || strcmp(argv[3], "-") == 0) ? DEFAULT_SERVER_IP : argv[3];
     }
-    // Check presence of default keyfiles
-    if (load_key_file(&context, keyfile+strlen(keyfile)-7) != 0) {
-        if (load_key_file(&context, keyfile) != 0) {
-            if (argc <= 6 || load_key_file(&context, argv[6]) != 0) {
-                fprintf(stderr, "Unable to load the key file [%s]\n", argv[6]);
+    // Check keyfile situation
+    if (argc <= 6 || strcmp(argv[6], "-") == 0) { // No keyfile argument
+        if (load_key_file(&context, keyfile+strlen(keyfile)-7) != 0) {
+            if (load_key_file(&context, keyfile) != 0) {
+                fprintf(stderr, "./vpa.key and ~/vpa.key not found\n");
                 return 1;
             }
+        }
+    } else { // Keyfile specified
+        if (load_key_file(&context, argv[6]) != 0) {
+            fprintf(stderr, "Unable to load the key file %s\n", argv[6]);
+            return 1;
         }
     }
     context.server_port = (argc <= 2 || strcmp(argv[2], "-") == 0) ? DEFAULT_PORT : argv[2];
@@ -619,7 +633,7 @@ int main(int argc, char *argv[])
         perror("tun device creation");
         return 1;
     }
-    printf("Interface: [%s]\n", context.if_name);
+    printf("Interface: %s\n", context.if_name);
     if (tun_set_mtu(context.if_name, DEFAULT_MTU) != 0) {
         perror("mtu");
     }

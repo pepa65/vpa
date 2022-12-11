@@ -62,6 +62,9 @@ At the other machine do (paste the copied base64 form of the key between the quo
 
 `echo '' |base64 --decode >vpa.key`
 
+A file `vpa.key` in the current directory will be used as the secret key, or in absence of that, the one in the user's home.
+A keyfile can be specified on the commandline which always takes priority.
+
 ## Run the server
 
 `sudo vpa --server`
@@ -110,33 +113,32 @@ That would be the only issue that needs to be worked around. Use a public resolv
 ## Full & advanced configuration
 
 ```text
-Server:  vpa -s|--server [<listenIP>] [<options>]
-Client:  vpa <server> [<options>]
-  <options>:    <port> <serverIP> <clientIP> <gatewayIP> <keyfile>
+Client: vpa <server> [<port> <serverIP> <clientIP> <gwIP> <keyfile>]
+Server: vpa -s|--server [<IP> <port> <serverIP> <clientIP> <gwIP> <keyfile>]
 
-Server:
-  -s|--server:  Run as VPN server (if not given: run as client).
-  <listenIP>:   For the server: the IP address to listen on (default: 0.0.0.0).
 Client:
   <server>:     Mandatory: the IP or hostname of the VPN server to connect to.
+Server:
+  -s|--server:  Run as VPN server (if not given: run as client).
+  <IP>:         The IP address the server listens on (default is all: 0.0.0.0).
 Common:
   <port>:       The server port to connect through (default: 443).
   <serverIP>:   The server-side tunnel IP (default: 10.11.12.1).
   <clientIP>:   The client-side tunnel IP (default: 10.11.12.13).
-  <gatewayIP>:  The gateway IP to tunnel through (default: from routing table).
+  <gwIP>:       The gateway IP to tunnel through (default: from routing table).
   <keyfile>:    Shared secret (defaults to ./vpa.key or else ~/vpa.key).
 All arguments are position-sensitive, and when marked with '-' or left off
 (on the right hand side), they will take their default values.
 ```
 
 * Use `-s` or `--server` for the server.
-* The server listens on all interfaces by default, or can be limited to the IP address given in `<listenIP>`.
+* The server listens on all interfaces by default, or can be limited to the IP address given in `<IP>`.
 * For the client, `<server>` must be specified: the IP address or hostname of the VPN server.
 * `<port>`: The TCP port to use for the VPN, `443` by default.
 * `<serverIP>`: Server IP address of the tunnel. The client and server tunnel IPs must be the same on the client and on the server.
   Use any **private** IP address subnet (`10.*.*.*`, `172.16-31.*.*`, `192.168.*.*`) here that is not in use, default `10.11.12.1`.
 * `<clientIP>`: Client IP address of the tunnel, default `10.11.12.13`.
-* `<gatewayIP>`: The gateway IP address to tunnel through, by default as shown by: `ip r show default`.
+* `<gwIP>`: The gateway IP address to tunnel through, by default as shown by: `ip r show default`.
 * `<keyfile>`: Path to the file with the secret key, can be left off if it is `./vpa.key` or if that is not present: `~/vpa.key`.
 
 The routing rules are all automatically set up when run, and torn down when exited. To make `vpa` operate without setting up
