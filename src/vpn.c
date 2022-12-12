@@ -532,8 +532,8 @@ static int load_key_file(Context *context, const char *file)
 __attribute__((noreturn)) static void usage(char *msg)
 {
     puts("vpa v" VERSION_STRING " - Virtual Private Access: a Dead Simple VPN\n\n"
-        "Client: vpa <server> [<port> <serverIP> <clientIP> <gwIP> <keyfile>]\n"
-        "Server: vpa -s|--server [<IP> <port> <serverIP> <clientIP> <gwIP> <keyfile>]\n\n"
+        "Client:  vpa <server> [<port> <serverIP> <clientIP> <gwIP> <keyfile>]\n"
+        "Server:  vpa -s|--server [<IP> <port> <serverIP> <clientIP> <gwIP> <keyfile>]\n\n"
         "Client:\n"
         "  <server>:     Mandatory: the IP or hostname of the VPN server to connect to.\n"
         "Server:\n"

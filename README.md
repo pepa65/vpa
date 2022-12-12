@@ -45,15 +45,18 @@ On Raspberry Pi 3 & 4, build it like this to enable NEON optimizations:
 
 `make mfpu=neon`
 
-Alternatively, if you have [zig](https://ziglang.org) installed, it can be used to compile `vpa`:
+The routing rules are all automatically set up when run, and torn down when exited. To make `vpa` operate without setting up
+routing rules, build the binary with:
 
-`zig build`
+`make NO_DEFAULT_ROUTES=1`
 
 Install with:
 
 `sudo make install`
 
-<!--On macOS, `vpa` can be installed using Homebrew: `brew install vpa`.-->
+Alternatively, if you have [zig](https://ziglang.org) installed, it can be used to compile `vpa`:
+
+`zig build`
 
 ## Make and copy secret key
 
@@ -103,7 +106,7 @@ In `/etc/systemd/system/vpa.service` put the following:
 Description=Virtual Private Access VPN Server
 
 [Service]
-ExecStart=/usr/local/sbin/vpa server /root/vpa.key
+ExecStart=/usr/local/sbin/vpa --server - - - - - /root/vpa.key
 Restart=always
 RestartSec=10
 
@@ -123,8 +126,8 @@ That would be the only issue that needs to be worked around. Use a public resolv
 ## Full & advanced configuration
 
 ```text
-Client: vpa <server> [<port> <serverIP> <clientIP> <gwIP> <keyfile>]
-Server: vpa -s|--server [<IP> <port> <serverIP> <clientIP> <gwIP> <keyfile>]
+Client:  vpa <server> [<port> <serverIP> <clientIP> <gwIP> <keyfile>]
+Server:  vpa -s|--server [<IP> <port> <serverIP> <clientIP> <gwIP> <keyfile>]
 
 Client:
   <server>:     Mandatory: the IP or hostname of the VPN server to connect to.
@@ -150,11 +153,6 @@ All arguments are position-sensitive, and when marked with '-' or left off
 * `<clientIP>`: Client IP address of the tunnel, default `10.11.12.13`.
 * `<gwIP>`: The gateway IP address to tunnel through, by default as shown by: `ip r show default`.
 * `<keyfile>`: Path to the file with the secret key, can be left off if it is `./vpa.key` or if that is not present: `~/vpa.key`.
-
-The routing rules are all automatically set up when run, and torn down when exited. To make `vpa` operate without setting up
-routing rules, build the binary with:
-
-`make NO_DEFAULT_ROUTES=1`
 
 ## Why
 
