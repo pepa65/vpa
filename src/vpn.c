@@ -522,6 +522,7 @@ static int load_key_file(Context *context, const char *file)
         (void) close(fd);
         return -1;
     }
+    timestamp(stdout);
 		printf("Using keyfile %s\n", file);
     uc_state_init(context->uc_kx_st, key, (const unsigned char *) "VPN Key Exchange");
     uc_memzero(key, sizeof key);
