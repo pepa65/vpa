@@ -106,7 +106,8 @@ In `/etc/systemd/system/vpa.service` put the following:
 Description=Virtual Private Access VPN Server
 
 [Service]
-ExecStart=/usr/local/sbin/vpa --server - - - - - /root/vpa.key
+Environment="HOME=/root"
+ExecStart=/usr/local/sbin/vpa --server
 Restart=always
 RestartSec=10
 
@@ -114,6 +115,7 @@ RestartSec=10
 WantedBy=network.target
 ```
 
+(Assuming the `vpa.key` file is in /root, otherwise the Environment can be adjusted.)
 It can then be enabled (needed only once) and started by:
 
 `systemctl enable --now vpa.service`
