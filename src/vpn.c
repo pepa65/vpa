@@ -42,6 +42,14 @@ typedef struct Context_ {
 
 volatile sig_atomic_t exit_signal_received;
 
+static void timestamp(FILE *dev)
+{
+    char ts[20];
+    time_t now = time(NULL);
+    strftime(ts, sizeof(ts), "%Y-%m-%d %H:%M:%S", localtime(&now));
+    fprintf(dev, "%s ", ts);
+}
+
 static void signal_handler(int sig)
 {
     signal(sig, SIG_DFL);
@@ -134,6 +142,7 @@ static int tcp_listener(const char *address, const char *port)
 #endif
     if ((eai = getaddrinfo(address, port, &hints, &res)) != 0 ||
         (res->ai_family != AF_INET && res->ai_family != AF_INET6)) {
+        timestamp(stderr);
         fprintf(stderr, "Unable to create the listening socket: %s\n", gai_strerror(eai));
         errno = EINVAL;
         return -1;
@@ -153,6 +162,7 @@ static int tcp_listener(const char *address, const char *port)
     (void) setsockopt(listen_fd, SOL_TCP, TCP_DEFER_ACCEPT,
                       (char *) (int[]){ ACCEPT_TIMEOUT / 1000 }, sizeof(int));
 #endif
+    timestamp(stdout);
     printf("Listening to %s:%s\n", address == NULL ? "*" : address, port);
     if (bind(listen_fd, (struct sockaddr *) res->ai_addr, (socklen_t) res->ai_addrlen) != 0 ||
         listen(listen_fd, backlog) != 0) {
@@ -240,17 +250,20 @@ static int tcp_accept(Context *context, int listen_fd)
     }
     getnameinfo((const struct sockaddr *) (const void *) &client_ss, client_ss_len, client_ip,
                 sizeof client_ip, NULL, 0, NI_NUMERICHOST | NI_NUMERICSERV);
+    timestamp(stdout);
     printf("Connection attempt from %s\n", client_ip);
     context->congestion = 0;
     fcntl(client_fd, F_SETFL, fcntl(client_fd, F_GETFL, 0) | O_NONBLOCK);
     if (context->client_fd != -1 &&
         memcmp(context->client_ip, client_ip, sizeof context->client_ip) != 0) {
+        timestamp(stderr);
         fprintf(stderr, "Closing: a session from %s is already active\n", context->client_ip);
         (void) close(client_fd);
         errno = EBUSY;
         return -1;
     }
     if (server_key_exchange(context, client_fd) != 0) {
+        timestamp(stderr);
         fprintf(stderr, "Authentication failed\n");
         (void) close(client_fd);
         errno = EACCES;
@@ -313,6 +326,7 @@ static int client_connect(Context *context)
     context->uc_st[context->is_server][0] ^= 1;
     context->client_fd = tcp_client(context->server_ip, context->server_port);
     if (context->client_fd == -1) {
+        timestamp(stderr);
         perror("Client connection failed");
         return -1;
     }
@@ -368,6 +382,7 @@ static int event_loop(Context *context)
     if (fds[POLLFD_LISTENER].revents & POLLIN) {
         new_client_fd = tcp_accept(context, context->listen_fd);
         if (new_client_fd == -1) {
+            timestamp(stderr);
             perror("Accepting a new client failed");
             return 0;
         }
@@ -378,6 +393,7 @@ static int event_loop(Context *context)
         context->client_fd = new_client_fd;
         client_buf->pos    = 0;
         memset(client_buf->data, 0, sizeof client_buf->data);
+        timestamp(stdout);
         puts("Session established");
         fds[POLLFD_CLIENT] = (struct pollfd){ .fd = context->client_fd, .events = POLLIN };
     }
@@ -415,12 +431,14 @@ static int event_loop(Context *context)
                                      2U + TAG_LEN + len - writenb, TIMEOUT);
             }
             if (writenb < (ssize_t) 0) {
+                timestamp(stderr);
                 perror("Unable to write data to the TCP socket");
                 return client_reconnect(context);
             }
         }
     }
     if ((fds[POLLFD_CLIENT].revents & POLLERR) || (fds[POLLFD_CLIENT].revents & POLLHUP)) {
+        timestamp(stdout);
         puts("Client disconnected");
         return client_reconnect(context);
     }
@@ -431,6 +449,7 @@ static int event_loop(Context *context)
 
         if ((readnb = safe_read_partial(context->client_fd, client_buf->len + client_buf->pos,
                                         2 + TAG_LEN + MAX_PACKET_LEN - client_buf->pos)) <= 0) {
+            timestamp(stdout);
             puts("Client disconnected");
             return client_reconnect(context);
         }
@@ -443,6 +462,7 @@ static int event_loop(Context *context)
             }
             if (uc_decrypt(context->uc_st[1], client_buf->data, len, client_buf->tag, TAG_LEN) !=
                 0) {
+                timestamp(stderr);
                 fprintf(stderr, "Corrupted stream\n");
                 sleep(1);
                 return client_reconnect(context);
@@ -472,6 +492,7 @@ static int doit(Context *context)
     if (context->is_server) {
         if ((context->listen_fd = tcp_listener(context->server_ip_or_name, context->server_port)) ==
             -1) {
+            timestamp(stderr);
             perror("Unable to set up a TCP server");
             return -1;
         }
@@ -663,7 +684,7 @@ int main(int argc, char *argv[])
         return -1;
     }
     firewall_rules(&context, 0, 0);
-    puts("Done.");
+    puts("\nDone");
 
     return 0;
 }
