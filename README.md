@@ -158,10 +158,11 @@ All arguments are position-sensitive, and when marked with '-' or left off
 
 ## Why
 
-* Using TCP (most VPNs use UDP to not get bogged down, but with `BBR` congestion is minimal)
-* Over any accessible port (ports `80` and `443` are usually available)
-* Fully tunneled
-* Cryptographically secure
-* Simple configuration
-* Simple usage
+* Using TCP (most VPNs use UDP to not get bogged down, but with `BBR` congestion is minimal).
+* Over any accessible port (ports `80` and `443` are usually available).
+* Fully tunneled.
+* Cryptographically secure.
+* Simple install: single binary.
+* Simple configuration: no configuration file.
+* Simple usage: only the keyfile needs to be placed on server and clients.
 

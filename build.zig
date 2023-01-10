@@ -10,7 +10,7 @@ pub fn build(b: *std.build.Builder) !void {
     vpa.install();
     vpa.linkLibC();
 
-    vpa.addIncludeDir("include");
+    vpa.addIncludePath("include");
     vpa.defineCMacro("_GNU_SOURCE", "1");
     vpa.addCSourceFiles(&.{ "src/charm.c", "src/os.c", "src/vpn.c" }, &.{});
 }
