@@ -5,6 +5,8 @@
 
 **vpa - Virtual Private Access: a dead simple VPN that just gives a client encrypted access to the server's internet**
 
+v0.2.4 <!-- Set in `include/vpn.h` -->
+
 ```text
 [client]---(encrypted tunnel)---[server]---(internet)
 ```
@@ -56,7 +58,9 @@ Install with:
 
 Alternatively, if you have [zig](https://ziglang.org) installed, it can be used to compile `vpa`:
 
-`zig build`
+`zig build -Drelease`
+
+(Without `-Drelease` the binary is a lot bigger, but that works too.)
 
 ## Make and copy secret key
 
@@ -98,7 +102,7 @@ If a port different than `443` needs to be used, specify it after the server's I
 Once both the server and the client are started, the encrypted connection is established and the routing is arranged.
 To disconnect, hit `Ctrl-C` on either the client or the server.
 
-To start the server automatically on bootup, a `systemd` service unit can be used.
+To start the server automatically on bootup, a `systemd` service unit can be used where applicable.
 In `/etc/systemd/system/vpa.service` put the following:
 
 ```text
