@@ -8,4 +8,7 @@ jobs:
     steps:
       - uses: actions/checkout@master
       - name: make
-        run: make
+        run:
+          - apt-get update -q -y
+          - apt-get install -y build-essential
+          - make

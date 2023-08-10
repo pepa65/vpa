@@ -6,6 +6,8 @@ stages:
 building:
   stage: build
   script:
+    - apt-get update -q -y
+    - apt-get install -y build-essential
     - make
   artifacts:
     name: vpa
