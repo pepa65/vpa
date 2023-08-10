@@ -4,11 +4,7 @@ on: [push]
 
 jobs:
   build:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macOS-latest]
-
+    runs-on: ubuntu:16.04
     steps:
       - uses: actions/checkout@master
       - name: make
