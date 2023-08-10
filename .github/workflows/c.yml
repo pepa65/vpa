@@ -7,8 +7,9 @@ jobs:
     runs-on: ubuntu:16.04
     steps:
       - uses: actions/checkout@master
+      - name: update
+        run: apt-get update -q -y
+      - name: install
+        run: apt-get install -y build-essential
       - name: make
-        run:
-          - apt-get update -q -y
-          - apt-get install -y build-essential
-          - make
+        run: make
