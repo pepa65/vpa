@@ -5,7 +5,7 @@
 
 **vpa - Virtual Private Access: a dead simple VPN that just gives a client encrypted access to the server's internet**
 
-v0.2.5 <!-- Set in `include/vpn.h` -->
+v0.2.7 <!-- Set in `include/vpn.h` -->
 
 ```text
 [client]---(encrypted tunnel)---[server]---(internet)
@@ -111,7 +111,7 @@ Description=Virtual Private Access VPN Server
 
 [Service]
 Environment="HOME=/root"
-ExecStart=/usr/local/sbin/vpa --server
+ExecStart=/usr/local/bin/vpa --server
 Restart=always
 RestartSec=10
 

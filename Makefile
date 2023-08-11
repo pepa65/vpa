@@ -9,11 +9,11 @@ vpa: $(CFLAGS_FILE) Makefile src/vpn.c src/charm.c src/os.c include/charm.h incl
 	strip $@
 
 install: vpa
-	install -d $(PREFIX)/sbin
-	install -m 0755 vpa $(PREFIX)/sbin
+	install -d $(PREFIX)/bin
+	install -m 0755 vpa $(PREFIX)/bin
 
 uninstall:
-	rm -f $(PREFIX)/sbin/vpa
+	rm -f $(PREFIX)/bin/vpa
 
 clean:
 	rm -f vpa *~ $(CFLAGS_FILE) $(COMPILE_TEST_FILE)
