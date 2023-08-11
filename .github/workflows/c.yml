@@ -1,4 +1,4 @@
-name: CI
+name: "tagged-release"
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
 
 jobs:
   tagged-release:
-  name: "Release"
+    name: "Release"
     runs-on: ubuntu-latest
     container: quay.io/pypa/manylinux2014_x86_64
     steps:
