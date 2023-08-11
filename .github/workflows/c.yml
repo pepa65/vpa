@@ -1,15 +1,26 @@
 name: CI
 
-on: [push]
+on:
+  push:
+    tags:
+      - "v*"
 
 jobs:
-  build:
-    runs-on: ubuntu-20.04
+  tagged-release:
+  name: "Release"
+    runs-on: ubuntu-latest
+    container: quay.io/pypa/manylinux2014_x86_64
     steps:
-      - uses: actions/checkout@master
       - name: update
         run: sudo apt-get update -q -y
       - name: install
         run: sudo apt-get install -y build-essential
       - name: make
         run: make
+      - uses: "marvinpinto/action-automatic-releases@latest"
+        with:
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          prerelease: false
+          automatic_release_tag: "latest"
+          files: vpa
+

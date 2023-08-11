@@ -16,7 +16,7 @@ Both the VPN server and client have the same tiny single-binary application that
 The only thing that is needed to establish a VPN connection is to have the binary present on both the server and
 the client, and to have the same 32-byte keyfile present on both sides.
 
-Features:
+## Features
 
 * Over TCP, so works pretty much everywhere, including on public wifi with only TCP port 443 open/available.
 * Uses only modern cryptography, with formally verified implementations: [charm](https://github.com/jedisct1/charm).
@@ -30,6 +30,16 @@ Features:
 
 The code of `vpa` is cloned from [dsvpn](https://github.com/jedisct1/dsvpn) and only the user interface (CLI) is modified
 to make it even easier to run. Apart from that it is fully compatible. All praise to [Frank Denis](https://github.com/jedisct1)!
+
+## Why
+
+* Using TCP (most VPNs use UDP to not get bogged down, but with `BBR` congestion is minimal).
+* Over any accessible port (ports `80` and `443` are usually available).
+* Fully tunneled.
+* Cryptographically secure.
+* Simple install: single binary.
+* Simple configuration: no configuration file.
+* Simple usage: only the keyfile needs to be placed on server and clients.
 
 ## Installation
 
@@ -63,7 +73,7 @@ Alternatively, if you have [zig](https://ziglang.org) installed, it can be used 
 
 (Without `-Drelease` the binary is a lot bigger, but that works too.)
 
-## Make and copy secret key
+### Make and copy secret key
 
 `vpa` uses a shared secret. The keyfile can be any file of at least 32 bytes.
 A random keyfile can be created with:
@@ -83,7 +93,9 @@ At the other machine do (paste the copied base64 form of the key between the quo
 A file `vpa.key` in the current directory will be used as the secret key, or in absence of that, the one in the user's home.
 A keyfile can be specified on the commandline which always takes priority.
 
-## Run the server
+## Running
+
+### Run the server
 
 `sudo vpa --server`
 
@@ -92,16 +104,24 @@ A keyfile can be specified on the commandline which always takes priority.
 The first example uses port `443`, the default.
 The second example specifies port `12345`, and everything else is set to the default values.
 
-## Run the client
+### Run the client
 
 `sudo vpa my.doma.in`
 
 If a port different than `443` needs to be used, specify it after the server's IP or hostname.
 
-## That's it
+#### Warning about DNS on the client
+
+If the client was using a DNS resolver that's only accessible from the local network, it will no longer be accessible through the VPN.
+That would be the only issue that needs to be worked around. Use a public resolver, a fully local resolver, or DNSCrypt.
+
+
+### That's it
 
 Once both the server and the client are started, the encrypted connection is established and the routing is arranged.
 To disconnect, hit `Ctrl-C` on either the client or the server.
+
+## Start server as a service
 
 To start the server automatically on bootup, a `systemd` service unit can be used where applicable.
 In `/etc/systemd/system/vpa.service` put the following:
@@ -124,11 +144,6 @@ WantedBy=network.target
 It can then be enabled (needed only once) and started by:
 
 `systemctl enable --now vpa.service`
-
-## Warning about DNS on the client
-
-If the client was using a DNS resolver that's only accessible from the local network, it will no longer be accessible through the VPN.
-That would be the only issue that needs to be worked around. Use a public resolver, a fully local resolver, or DNSCrypt.
 
 ## Full & advanced configuration
 
@@ -160,14 +175,4 @@ All arguments are position-sensitive, and when marked with '-' or left off
 * `<clientIP>`: Client IP address of the tunnel, default `10.11.12.13`.
 * `<gwIP>`: The gateway IP address to tunnel through, by default as shown by: `ip r show default`.
 * `<keyfile>`: Path to the file with the secret key, can be left off if it is `./vpa.key` or if that is not present: `~/vpa.key`.
-
-## Why
-
-* Using TCP (most VPNs use UDP to not get bogged down, but with `BBR` congestion is minimal).
-* Over any accessible port (ports `80` and `443` are usually available).
-* Fully tunneled.
-* Cryptographically secure.
-* Simple install: single binary.
-* Simple configuration: no configuration file.
-* Simple usage: only the keyfile needs to be placed on server and clients.
 
