@@ -1,6 +1,6 @@
 # ![vpa](https://raw.github.com/pepa65/vpa/master/logo.png)
 
-[![Gitlab pipeline](https://gitlab.com/pepa65/vpa/badges/master/pipeline.svg)[(https://gitlab.com/pepa65/vpa/-/pipelines)
+[![Gitlab pipeline](https://gitlab.com/pepa65/vpa/badges/master/pipeline.svg)](https://gitlab.com/pepa65/vpa/-/pipelines)
 [![GitHub CI status](https://github.com/pepa65/vpa/workflows/CI/badge.svg)](https://github.com/pepa65/vpa/actions)
 ![CodeQL scan](https://github.com/pepa65/vpa/workflows/CodeQL%20scan/badge.svg)
 
