@@ -2,9 +2,8 @@ name: "CodeQL scan"
 
 on:
   push:
-  pull_request:
-  schedule:
-    - cron: '0 6 * * 0'
+    tags:
+      - "v*"
 jobs:
   CodeQL-Build:
     runs-on: ubuntu-20.04

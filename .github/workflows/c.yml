@@ -8,11 +8,11 @@ on:
 jobs:
   tagged-release:
     name: "Release"
-    runs-on: ubuntu-latest
-    container: quay.io/pypa/manylinux2014_x86_64
+    runs-on: ubuntu-20.04
     steps:
-      - name: make
-        run: make
+      - run: sudo apt-get update -y -q
+      - run: sudo apt-get install -y build-essential
+      - run: make
       - uses: "marvinpinto/action-automatic-releases@latest"
         with:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
