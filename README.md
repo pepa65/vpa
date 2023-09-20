@@ -1,12 +1,12 @@
 # ![vpa](https://raw.github.com/pepa65/vpa/master/logo.png)
 
-[![Gitlab pipeline](https://gitlab.com/pepa65/vpa/badges/master/pipeline.svg)](https://gitlab.com/pepa65/vpa/-/pipelines)
+[Gitlab ![Gitlab pipeline](https://gitlab.com/pepa65/vpa/badges/master/pipeline.svg)](https://gitlab.com/pepa65/vpa/-/pipelines)
 [![GitHub CI status](https://github.com/pepa65/vpa/workflows/CI/badge.svg)](https://github.com/pepa65/vpa/actions)
 ![CodeQL scan](https://github.com/pepa65/vpa/workflows/CodeQL%20scan/badge.svg)
 
 **vpa - Virtual Private Access: a dead simple VPN that just gives a client encrypted access to the server's internet**
 
-v0.2.13 <!-- Set in `include/vpn.h` -->
+v0.2.14 <!-- Set in `include/vpn.h` -->
 
 ```text
 [client]---(encrypted tunnel)---[server]---(internet)
