@@ -333,7 +333,7 @@ static int client_connect(Context *context)
     fcntl(context->client_fd, F_SETFL, fcntl(context->client_fd, F_GETFL, 0) | O_NONBLOCK);
     context->congestion = 0;
     if (client_key_exchange(context) != 0) {
-        fprintf(stderr, "Authentication failed\n");
+        fprintf(stderr, "Authentication failed for %s\n", context->client_ip);
         client_disconnect(context);
         sleep(1);
         return -1;
