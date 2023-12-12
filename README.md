@@ -5,7 +5,7 @@
 
 **vpa - Virtual Private Access: a dead simple VPN that just gives a client encrypted access to the server's internet**
 
-v0.2.17 <!-- Set in `include/vpn.h` -->
+v0.2.18 <!-- Set in `include/vpn.h` -->
 
 ```text
 [client]---(encrypted tunnel)---[server]---(internet)
@@ -162,4 +162,4 @@ All arguments are position-sensitive, and when marked with '-' or left off
 * `<clientIP>`: Client IP address of the tunnel, default `10.11.12.13`.
 * `<gwIP>`: The gateway IP address to tunnel through, by default as shown by: `ip r show default`.
 * `<keyfile>`: Path to the file with the secret key, can be left off if it is `./vpa.key` or if that is not present: `~/vpa.key`.
-* Some of the output goes to stdout and some to stderr...
+* Some of the output goes to stdout and some to stderr... Only the server's stderr output is used for fail2ban.

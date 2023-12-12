@@ -382,8 +382,8 @@ static int event_loop(Context *context)
     if (fds[POLLFD_LISTENER].revents & POLLIN) {
         new_client_fd = tcp_accept(context, context->listen_fd);
         if (new_client_fd == -1) {
-            timestamp(stderr);
-            perror("Accepting a new client failed");
+            //timestamp(stderr);
+            //perror("Accepting a new client failed");
             return 0;
         }
         if (context->client_fd != -1) {
