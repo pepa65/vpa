@@ -264,7 +264,7 @@ static int tcp_accept(Context *context, int listen_fd)
     }
     if (server_key_exchange(context, client_fd) != 0) {
         timestamp(stderr);
-        fprintf(stderr, "Authentication failed\n");
+        fprintf(stderr, "Authentication failed for %s\n",context->client_ip);
         (void) close(client_fd);
         errno = EACCES;
         return -1;
