@@ -598,6 +598,7 @@ int main(int argc, char *argv[])
             usage("Error: too many arguments");
         }
         context.is_server = 1;
+				puts("\nStart server");
         // shift arguments to align server and client arguments
         for(int i = 1; i < argc; ++i) {
             argv[i]  = argv[i+1];
@@ -683,7 +684,7 @@ int main(int argc, char *argv[])
         return -1;
     }
     firewall_rules(&context, 0, 0);
-    puts("\nDone");
+    puts("Done");
 
     return 0;
 }
