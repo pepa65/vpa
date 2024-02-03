@@ -25,6 +25,7 @@ the client, and to have the same 32-byte keyfile present on both sides.
 * Works on Linux (kernel >= 3.17), macOS and OpenBSD, as well as DragonFly BSD, FreeBSD and NetBSD in client and point-to-point modes.
   Adding support for other operating systems is trivial.
 * Doesn't leak between reconnects if the network doesn't change. Blocks IPv6 on the client to prevent IPv6 leaks.
+* It does require shell commands to be present in the PATH: `awk`, `sysctl`, `iptables`, `ip` (linux) or `route` (OSX/BSDs).
 
 The code of `vpa` is cloned from [dsvpn](https://github.com/jedisct1/dsvpn) and only the user interface (CLI) is modified
 to make it even easier to run. Apart from that it is fully compatible. All praise to [Frank Denis](https://github.com/jedisct1)!
