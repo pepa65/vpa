@@ -1,5 +1,5 @@
 #ifndef os_H
-#define os_H 1
+#define os_H
 
 #include "vpn.h"
 
