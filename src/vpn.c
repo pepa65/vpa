@@ -438,8 +438,8 @@ static int event_loop(Context *context)
         }
     }
     if ((fds[POLLFD_CLIENT].revents & POLLERR) || (fds[POLLFD_CLIENT].revents & POLLHUP)) {
-        timestamp(stdout);
-        puts("Client disconnected");
+        //timestamp(stdout);
+        //puts("Client disconnected");
         return client_reconnect(context);
     }
     if (fds[POLLFD_CLIENT].revents & POLLIN) {

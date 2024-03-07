@@ -5,7 +5,7 @@
 
 **vpa - Virtual Private Access: a dead simple VPN that just gives a client encrypted access to the server's internet**
 
-v0.2.20 <!-- Set in `include/vpn.h` -->
+v0.2.21 <!-- Set in `include/vpn.h` -->
 
 ```text
 [client]---(encrypted tunnel)---[server]---(internet)
