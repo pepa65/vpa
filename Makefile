@@ -2,6 +2,12 @@ CFLAGS_FILE?=.cflags
 COMPILE_TEST_FILE?=.test.c
 PREFIX?=/usr/local
 
+## Option for static binary with /opt/zig/zig (not working yet)
+#ZIG = /opt/zig/zig
+#ifneq ("$(wildcard $(ZIG))", "")
+#  CC = $(ZIG) cc -target x86_64-linux-musl
+#endif
+
 all: vpa
 
 vpa: $(CFLAGS_FILE) Makefile src/vpn.c src/charm.c src/os.c include/charm.h include/vpn.h include/os.h

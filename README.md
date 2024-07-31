@@ -66,7 +66,7 @@ Install with:
 `sudo make install`
 
 ### Zig build
-Alternatively, if you have [zig](https://ziglang.org) installed, it can be used to compile `vpa`:
+Alternatively, if you have [zig](https://ziglang.org) installed (0.12 or later), it can be used to compile `vpa`:
 
 `zig build -Drelease`
 
@@ -110,6 +110,22 @@ The second example specifies port `12345`, and everything else is set to the def
 `sudo vpa my.doma.in`
 
 If a port different than `443` needs to be used, specify it after the server's IP or hostname.
+
+#### Start client as a service
+To start the client automatically on bootup, a `systemd` service unit can be used where applicable.
+In `/etc/systemd/system/vpa-client.service` put the following
+(replace `HOST` with the server's hostname or IP address!):
+
+```
+[Unit]
+Description=Virtual Private Access VPN Server
+
+[Service]
+ExecStart=/usr/local/bin/vpa HOST
+
+[Install]
+WantedBy=network.target
+```
 
 #### Warning about DNS on the client
 If the client was using a DNS resolver that's only accessible from the local network, it will no longer be accessible through the VPN.
