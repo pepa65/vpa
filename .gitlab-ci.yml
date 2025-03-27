@@ -1,4 +1,3 @@
-#image: ubuntu:16.04
 image: ubuntu:24.04
 
 stages:
@@ -13,7 +12,8 @@ building:
     - tar xf zig-linux-x86_64-0.14.0.tar.xz
     - PATH=$PWD/zig-linux-x86_64-0.14.0:$PATH
     - make -B zig
+    - mv zig-out/bin/vpa vpa
   artifacts:
     name: vpa
     paths:
-     - zig-out/bin/vpa
+     - vpa
