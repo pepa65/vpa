@@ -5,7 +5,7 @@
 
 **vpa - Virtual Private Access: a dead simple VPN that just gives a client encrypted access to the server's internet**
 
-v0.3.1 <!-- Set in `include/vpn.h` -->
+v0.3.2 <!-- Set in `include/vpn.h` -->
 
 ```text
 [client]---(encrypted tunnel)---[server]---(internet)
@@ -65,15 +65,10 @@ Install with:
 `sudo make install`
 
 ### Zig build
-Alternatively, if you have [zig](https://ziglang.org) installed (0.12 or later), it can be used to compile `vpa`:
+Alternatively, if you have [zig](https://ziglang.org) installed (0.12 or later), it can be used to compile `vpa`,
+and this gives a statically linked binary (against musl), so no GLIBC version problems on older Linux distros:
 
-`zig build -Drelease`
-
-(Without `-Drelease` the binary is a lot bigger, but that works too.)
-
-For static linking against musl (no GLIBC version problems on older Linux distros):
-
-`zig build -Drelease -Dtarget=x86-linux-musl`
+`make zig`
 
 The binary ends up in `zig-out/bin/vpa`.
 
