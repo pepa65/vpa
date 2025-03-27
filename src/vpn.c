@@ -165,12 +165,11 @@ static int tcp_listener(const char *address, const char *port)
     timestamp(stdout);
     printf("Listening to %s:%s\n", address == NULL ? "*" : address, port);
     if (bind(listen_fd, (struct sockaddr *) res->ai_addr, (socklen_t) res->ai_addrlen) != 0 ||
-        listen(listen_fd, backlog) != 0) {
+            listen(listen_fd, backlog) != 0) {
         freeaddrinfo(res);
         return -1;
     }
     freeaddrinfo(res);
-
     return listen_fd;
 }
 
@@ -490,9 +489,21 @@ static int doit(Context *context)
     if (context->is_server) {
         if ((context->listen_fd = tcp_listener(context->server_ip_or_name, context->server_port)) ==
             -1) {
-            timestamp(stderr);
-            perror("Unable to set up a TCP server");
-            return -1;
+            if (strcmp(context->server_port, DEFAULT_PORT) == 0) {
+                timestamp(stdout);
+                puts("Port " DEFAULT_PORT " taken, trying fallback");
+                context->server_port = FALLBACK_PORT;
+                if ((context->listen_fd = tcp_listener(context->server_ip_or_name, context->server_port)) ==
+                    -1) {
+                    timestamp(stderr);
+                    perror("Unable to set up a TCP server with fallback port 444");
+                    return -1;
+                }
+            } else {
+                timestamp(stderr);
+                perror("Unable to set up a TCP server");
+                return -1;
+            }
         }
         context->fds[POLLFD_LISTENER] = (struct pollfd){
             .fd     = context->listen_fd,
@@ -535,15 +546,16 @@ __attribute__((noreturn)) static void usage(char *msg)
         "Server:  vpa -s|--server [<IP> <port> <serverIP> <clientIP> <gwIP> <keyfile>]\n\n"
         "Client:\n"
         "  <server>:     Mandatory: the IP or hostname of the VPN server to connect to.\n"
+        "  <port>:       The port served on (default: " DEFAULT_PORT ", fallback to " FALLBACK_PORT ").\n"
         "Server:\n"
         "  -s|--server:  Run as VPN server (if not given: run as client).\n"
         "  <IP>:         The IP address the server listens on (default is all: 0.0.0.0).\n"
+        "  <port>:       The server port to connect to (default: " DEFAULT_PORT ").\n"
         "Common:\n"
-        "  <port>:       The server port to connect through (default: 443).\n"
-        "  <serverIP>:   The server-side tunnel IP (default: 10.11.12.1).\n"
-        "  <clientIP>:   The client-side tunnel IP (default: 10.11.12.13).\n"
+        "  <serverIP>:   The server-side tunnel IP (default: " DEFAULT_SERVER_IP ").\n"
+        "  <clientIP>:   The client-side tunnel IP (default: " DEFAULT_CLIENT_IP ").\n"
         "  <gwIP>:       The gateway IP to tunnel through (default: from routing table).\n"
-        "  <keyfile>:    Shared secret (defaults to ./vpa.key or else ~/vpa.key).\n"
+        "  <keyfile>:    Shared secret (default: ./" KEYNAME " with fallback to ~/" KEYNAME ").\n"
         "All arguments are position-sensitive, and when marked with '-' or left off\n"
         "(on the right hand side), they will take their default values.");
     if (strlen(msg) > 0) {
@@ -587,9 +599,11 @@ int main(int argc, char *argv[])
 {
     Context context;
     const char *ext_gw_ip;
-    const char *keyfile = strcat(getenv("HOME"), "/vpa.key");
-
-    if (argc <= 1) { // No arguments: help
+    char *keyfile = strcat(getenv("HOME"), "/" KEYNAME);
+    if (fopen(KEYNAME, "r")) {
+        keyfile = KEYNAME;
+    }
+    if (argc <= 1 || strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0) {
         usage("");
     }
     memset(&context, 0, sizeof context);
@@ -625,7 +639,7 @@ int main(int argc, char *argv[])
     if (argc <= 6 || strcmp(argv[6], "-") == 0) { // No keyfile argument
         if (load_key_file(&context, keyfile+strlen(keyfile)-7) != 0) {
             if (load_key_file(&context, keyfile) != 0) {
-                fprintf(stderr, "./vpa.key and ~/vpa.key not found\n");
+                fprintf(stderr, "./" KEYNAME " and ~/" KEYNAME " not found\n");
                 return 1;
             }
         }

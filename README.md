@@ -5,7 +5,7 @@
 
 **vpa - Virtual Private Access: a dead simple VPN that just gives a client encrypted access to the server's internet**
 
-v0.2.21 <!-- Set in `include/vpn.h` -->
+v0.3.0 <!-- Set in `include/vpn.h` -->
 
 ```text
 [client]---(encrypted tunnel)---[server]---(internet)
@@ -27,8 +27,7 @@ the client, and to have the same 32-byte keyfile present on both sides.
 * Doesn't leak between reconnects if the network doesn't change. Blocks IPv6 on the client to prevent IPv6 leaks.
 * It does require shell commands to be present in the PATH: `awk`, `sysctl`, `iptables`, `ip` (linux) or `route` (OSX/BSDs).
 
-The code of `vpa` is cloned from [dsvpn](https://github.com/jedisct1/dsvpn) and only the user interface (CLI) is modified
-to make it even easier to run. Apart from that it is fully compatible. All praise to [Frank Denis](https://github.com/jedisct1)!
+The code of `vpa` is cloned from [dsvpn](https://github.com/jedisct1/dsvpn) and mainly the user interface (CLI) is modified to make it even easier to run. Apart from that it is fully compatible. All praise to [Frank Denis](https://github.com/jedisct1)!
 
 ## Why
 * Using TCP (most VPNs use UDP to not get bogged down, but with `BBR` congestion is minimal).
@@ -103,13 +102,13 @@ A keyfile can be specified on the commandline which always takes priority.
 
 `sudo vpa -s - 12345`
 
-The first example uses port `443`, the default.
+The first example uses port `443`, the default (in case `443` is already taken, `444` is tried).
 The second example specifies port `12345`, and everything else is set to the default values.
 
 ### Run the client
 `sudo vpa my.doma.in`
 
-If a port different than `443` needs to be used, specify it after the server's IP or hostname.
+If a port different than `443` (or `444`) needs to be used, specify it after the server's IP or hostname.
 
 #### Start client as a service
 To start the client automatically on bootup, a `systemd` service unit can be used where applicable.
@@ -160,28 +159,32 @@ It can then be enabled (needed only once) and started by:
 
 ## Full & advanced configuration
 ```text
+vpa v0.3.0 - Virtual Private Access: a Dead Simple VPN
+
 Client:  vpa <server> [<port> <serverIP> <clientIP> <gwIP> <keyfile>]
 Server:  vpa -s|--server [<IP> <port> <serverIP> <clientIP> <gwIP> <keyfile>]
 
 Client:
   <server>:     Mandatory: the IP or hostname of the VPN server to connect to.
+  <port>:       The port served on (default: 443, fallback to 444).
 Server:
   -s|--server:  Run as VPN server (if not given: run as client).
   <IP>:         The IP address the server listens on (default is all: 0.0.0.0).
+  <port>:       The server port to connect to (default: 443).
 Common:
-  <port>:       The server port to connect through (default: 443).
   <serverIP>:   The server-side tunnel IP (default: 10.11.12.1).
   <clientIP>:   The client-side tunnel IP (default: 10.11.12.13).
   <gwIP>:       The gateway IP to tunnel through (default: from routing table).
-  <keyfile>:    Shared secret (defaults to ./vpa.key or else ~/vpa.key).
+  <keyfile>:    Shared secret (default: ./vpa.key with fallback to ~/vpa.key).
 All arguments are position-sensitive, and when marked with '-' or left off
 (on the right hand side), they will take their default values.
 ```
 
 * Use `-s` or `--server` for the server.
 * The server listens on all interfaces by default, or can be limited to the IP address given in `<IP>`.
+* If no port is given, the server will try to start on `443`, and fall back to `444` if `443` is in use.
 * For the client, `<server>` must be specified: the IP address or hostname of the VPN server.
-* `<port>`: The TCP port to use for the VPN, `443` by default.
+* `<port>`: The TCP port to use for the VPN, `443` by default, or `444` if that is taken.
 * `<serverIP>`: Server IP address of the tunnel. The client and server tunnel IPs must be the same on the client and on the server.
   Use any **private** IP address subnet (`10.*.*.*`, `172.16-31.*.*`, `192.168.*.*`) here that is not in use, default `10.11.12.1`.
 * `<clientIP>`: Client IP address of the tunnel, default `10.11.12.13`.

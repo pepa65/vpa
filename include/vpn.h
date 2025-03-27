@@ -1,5 +1,6 @@
 #ifndef vpn_H
 #define vpn_H
+#define VERSION_STRING "0.3.0"
 
 #include <sys/ioctl.h>
 #include <sys/socket.h>
@@ -35,8 +36,6 @@
 #include <sys/sys_domain.h>
 #endif
 
-#define VERSION_STRING "0.2.21"
-
 #ifdef __NetBSD__
 #define DEFAULT_MTU 1500
 #else
@@ -55,6 +54,8 @@
 #define DEFAULT_CLIENT_IP "10.11.12.13"
 #define DEFAULT_SERVER_IP "10.11.12.1"
 #define DEFAULT_PORT "443"
+#define FALLBACK_PORT "444"
+#define KEYNAME "vpa.key"
 
 #if defined(__BYTE_ORDER__) && defined(__ORDER_BIG_ENDIAN__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__ && !defined(NATIVE_BIG_ENDIAN)
 #define NATIVE_BIG_ENDIAN
