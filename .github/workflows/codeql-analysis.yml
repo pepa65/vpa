@@ -2,8 +2,9 @@ name: "CodeQL scan"
 
 on:
   push:
-    tags:
-      - "v*"
+    branches: [ "master" ]
+    #tags:
+    #  - "v*"
 
 jobs:
   CodeQL-Build:
