@@ -7,12 +7,13 @@ building:
   stage: build
   script:
     - apt-get update -q -y
-    - apt-get install -y build-essential wget
-    - wget 'https://ziglang.org/download/0.14.0/zig-linux-x86_64-0.14.0.tar.xz'
+    - apt-get install -y build-essential wget git
+    - wget -q 'https://ziglang.org/download/0.14.0/zig-linux-x86_64-0.14.0.tar.xz'
     - tar xf zig-linux-x86_64-0.14.0.tar.xz
     - mv zig-linux-x86_64-0.14.0 zig
     - chmod +x zig
     - PATH=.:$PATH
+    - ls
     - make zig
   artifacts:
     name: vpa
