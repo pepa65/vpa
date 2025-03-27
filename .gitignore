@@ -1,6 +1,7 @@
 /.cflags
 /.test.c
 /vpa
+/vpas
 /vpa.key
 /zig-cache
 /zig-out

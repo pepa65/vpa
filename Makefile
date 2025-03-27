@@ -8,11 +8,15 @@ PREFIX?=/usr/local
 #  CC = $(ZIG) cc -target x86_64-linux-musl
 #endif
 
-all: vpa
+all: vpa zig
 
 vpa: $(CFLAGS_FILE) Makefile src/vpn.c src/charm.c src/os.c include/charm.h include/vpn.h include/os.h
 	$(CC) $$(cat "$(CFLAGS_FILE)") $(OPTFLAGS) -Iinclude -o $@ src/vpn.c src/charm.c src/os.c
 	strip $@
+
+zig:
+	zig build -Drelease -Dtarget=x86-linux-musl
+	upx --lzma --best zig-out/bin/vpa
 
 install: vpa
 	install -d $(PREFIX)/bin

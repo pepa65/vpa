@@ -13,7 +13,7 @@ pub fn build(b: *std.Build) !void {
 	});
 	vpa.linkLibC();
 	vpa.addIncludePath(b.path("include"));
-	vpa.defineCMacro("_GNU_SOURCE", "1");
+	vpa.root_module.addCMacro("_GNU_SOURCE", "1");
 	const source_files = &.{ "src/charm.c", "src/os.c", "src/vpn.c" };
 	vpa.addCSourceFiles(.{ .files = source_files });
 	b.installArtifact(vpa);
