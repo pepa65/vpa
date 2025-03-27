@@ -12,7 +12,7 @@ vpa: $(CFLAGS_FILE) Makefile src/vpn.c src/charm.c src/os.c include/charm.h incl
 	$(CC) $$(cat "$(CFLAGS_FILE)") $(OPTFLAGS) -Iinclude -o $@ src/vpn.c src/charm.c src/os.c
 	strip $@
 
-zig:
+zig: zig-out/bin/vpa
 	zig build -Drelease -Dtarget=x86-linux-musl
 	upx --lzma --best zig-out/bin/vpa
 
