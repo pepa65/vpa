@@ -8,15 +8,16 @@ on:
 jobs:
   tagged-release:
     name: "release"
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@master
       - run: sudo apt-get update -y -q
       - run: sudo apt-get install -y build-essential upx
-      - run: make
-      - run: upx vpa
+      - run: snap install zig --beta --classic
+      - run: make zig
+      - run: upx --lzma --best zig-out/bin/vpa
       - uses: "marvinpinto/action-automatic-releases@latest"
         with:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
           prerelease: false
-          files: vpa
+          files: zig-out/bin/vpa
