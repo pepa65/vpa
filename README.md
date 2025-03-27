@@ -5,7 +5,7 @@
 
 **vpa - Virtual Private Access: a dead simple VPN that just gives a client encrypted access to the server's internet**
 
-v0.3.3 <!-- Set in `include/vpn.h` -->
+v0.3.4 <!-- Set in `include/vpn.h` -->
 
 ```text
 [client]---(encrypted tunnel)---[server]---(internet)
@@ -154,7 +154,7 @@ It can then be enabled (needed only once) and started by:
 
 ## Full & advanced configuration
 ```text
-vpa v0.3.3 - Virtual Private Access: a Dead Simple VPN
+vpa v0.3.4 - Virtual Private Access: a Dead Simple VPN
 
 Client:  vpa <server> [<port> <serverIP> <clientIP> <gwIP> <keyfile>]
 Server:  vpa -s|--server [<IP> <port> <serverIP> <clientIP> <gwIP> <keyfile>]

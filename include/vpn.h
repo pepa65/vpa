@@ -1,6 +1,6 @@
 #ifndef vpn_H
 #define vpn_H
-#define VERSION_STRING "0.3.3"
+#define VERSION_STRING "0.3.4"
 
 #include <sys/ioctl.h>
 #include <sys/socket.h>
