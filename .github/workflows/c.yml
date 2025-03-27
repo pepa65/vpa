@@ -2,9 +2,8 @@ name: "release"
 
 on:
   push:
-    branches: [ "master" ]
-    #tags:
-    #  - "v*"
+    tags:
+      - "v*"
 
 jobs:
   tagged-release:
