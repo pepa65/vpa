@@ -10,14 +10,10 @@ building:
     - apt-get install -y build-essential wget git
     - wget -q 'https://ziglang.org/download/0.14.0/zig-linux-x86_64-0.14.0.tar.xz'
     - tar xf zig-linux-x86_64-0.14.0.tar.xz
-    - mv zig-linux-x86_64-0.14.0 zig
-    - chmod 777 zig
-    - ls -AFl
+    - mv zig-linux-x86_64-0.14.0/zig .
+    - chmod +x zig
     - PATH=$PWD:$PATH
-    - echo $PATH
-    - hash zig
-    - whereis zig
-    - make -B zig
+    - make zig
   artifacts:
     name: vpa
     paths:
