@@ -13,6 +13,7 @@ building:
     - mv zig-linux-x86_64-0.14.0 zig
     - chmod 777 zig
     - PATH=.:$PATH
+    - hash zig
     - make -B zig
   artifacts:
     name: vpa
