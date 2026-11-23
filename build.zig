@@ -1,27 +1,26 @@
-// Req. 0.12 or later
 const std = @import("std");
-const builtin = @import("builtin");
 
 pub fn build(b: *std.Build) !void {
 	const target = b.standardTargetOptions(.{});
 	const optimize = b.standardOptimizeOption(.{ .preferred_optimize_mode = .ReleaseSmall });
-	const vpa = b.addExecutable(.{
-		.name = "vpa",
+	const root_module = b.createModule(.{
 		.target = target,
 		.optimize = optimize,
+		.link_libc = true,
 		.strip = true,
 	});
-	vpa.linkLibC();
-	vpa.addIncludePath(b.path("include"));
-	vpa.root_module.addCMacro("_GNU_SOURCE", "1");
+	root_module.addIncludePath(b.path("include"));
+	root_module.addCMacro("_GNU_SOURCE", "1");
 	const source_files = &.{ "src/charm.c", "src/os.c", "src/vpn.c" };
-	vpa.addCSourceFiles(.{ .files = source_files });
-	b.installArtifact(vpa);
-	const run_cmd = b.addRunArtifact(vpa);
+	root_module.addCSourceFiles(.{ .files = source_files });
+	const dsvpn = b.addExecutable(.{
+		.name = "dsvpn",
+		.root_module = root_module,
+	});
+	b.installArtifact(dsvpn);
+	const run_cmd = b.addRunArtifact(dsvpn);
 	run_cmd.step.dependOn(b.getInstallStep());
-	if (b.args) |args| {
-		run_cmd.addArgs(args);
-	}
+	run_cmd.addPassthruArgs();
 	const run_step = b.step("run", "Run the app");
 	run_step.dependOn(&run_cmd.step);
 }

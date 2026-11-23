@@ -1,11 +1,10 @@
-# ![vpa](https://raw.github.com/pepa65/vpa/master/logo.png)
+![vpa](https://raw.github.com/pepa65/vpa/master/logo.png)
 [Gitlab ![Gitlab pipeline](https://gitlab.com/pepa65/vpa/badges/master/pipeline.svg)](https://gitlab.com/pepa65/vpa/-/pipelines)
 [![GitHub CI status](https://github.com/pepa65/vpa/workflows/CI/badge.svg)](https://github.com/pepa65/vpa/actions)
 ![CodeQL scan](https://github.com/pepa65/vpa/workflows/CodeQL%20scan/badge.svg)
 
-**vpa - Virtual Private Access: a dead simple VPN that just gives a client encrypted access to the server's internet**
-
-v0.3.4 <!-- Set in `include/vpn.h` -->
+# vpa v0.4.0 <!-- Set in `src/vpn.a` and Usage below -->
+**Virtual Private Access: a dead simple VPN that just gives a client encrypted access to the server's internet**
 
 ```text
 [client]---(encrypted tunnel)---[server]---(internet)
@@ -17,6 +16,7 @@ the client, and to have the same 32-byte keyfile present on both sides.
 
 ## Features
 * Over TCP, so works pretty much everywhere, including on public wifi with only TCP port 443 open/available.
+  - A high-performance UDP-based alternative: [Twice](https://github.com/jedisct1/twice)
 * Uses only modern cryptography, with formally verified implementations: [charm](https://github.com/jedisct1/charm).
 * Small and constant memory footprint, no heap memory allocations.
 * Small single-binary (~35 kB or ~15 kB compressed), with a small and readable code base without external dependencies.
@@ -154,7 +154,7 @@ It can then be enabled (needed only once) and started by:
 
 ## Full & advanced configuration
 ```text
-vpa v0.3.4 - Virtual Private Access: a Dead Simple VPN
+vpa v0.4.0 - Virtual Private Access: a Dead Simple VPN
 
 Client:  vpa <server> [<port> <serverIP> <clientIP> <gwIP> <keyfile>]
 Server:  vpa -s|--server [<IP> <port> <serverIP> <clientIP> <gwIP> <keyfile>]

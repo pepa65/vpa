@@ -1,5 +1,84 @@
-#include "os.h"
-#include "vpn.h"
+// os.c
+
+#include <sys/ioctl.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <sys/uio.h>
+#include <sys/wait.h>
+#include <net/if.h>
+#include <netinet/in.h>
+#include <netinet/tcp.h>
+#include <ctype.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <inttypes.h>
+#include <netdb.h>
+#include <poll.h>
+#include <signal.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <unistd.h>
+#ifdef __linux__
+#include <linux/if_tun.h>
+#endif
+#ifdef __APPLE__
+#include <net/if_utun.h>
+#include <sys/kern_control.h>
+#include <sys/sys_domain.h>
+#endif
+#ifdef __NetBSD__
+#define DEFAULT_MTU 1500
+#else
+#define DEFAULT_MTU 9000
+#endif
+#define RECONNECT_ATTEMPTS 100
+#define TAG_LEN 6
+#define MAX_PACKET_LEN 65536
+#define TS_TOLERANCE 7200
+#define TIMEOUT (60 * 1000)
+#define ACCEPT_TIMEOUT (10 * 1000)
+#define OUTER_CONGESTION_CONTROL_ALG "bbr"
+#define BUFFERBLOAT_CONTROL 1
+#define NOTSENT_LOWAT (128 * 1024)
+#define DEFAULT_CLIENT_IP "10.11.12.13"
+#define DEFAULT_SERVER_IP "10.11.12.1"
+#define DEFAULT_PORT "443"
+#define FALLBACK_PORT "444"
+#define KEYNAME "vpa.key"
+#if defined(__BYTE_ORDER__) && defined(__ORDER_BIG_ENDIAN__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__ && !defined(NATIVE_BIG_ENDIAN)
+#define NATIVE_BIG_ENDIAN
+#endif
+#ifdef NATIVE_BIG_ENDIAN
+#define endian_swap16(x) __builtin_bswap16(x)
+#define endian_swap32(x) __builtin_bswap32(x)
+#define endian_swap64(x) __builtin_bswap64(x)
+#else
+#define endian_swap16(x) (x)
+#define endian_swap32(x) (x)
+#define endian_swap64(x) (x)
+#endif
+extern volatile sig_atomic_t exit_signal_received;
+
+ssize_t safe_read(const int fd, void *const buf_, size_t count, const int timeout);
+ssize_t safe_write(const int fd, const void *const buf_, size_t count, const int timeout);
+ssize_t safe_read_partial(const int fd, void *const buf_, const size_t max_count);
+ssize_t safe_write_partial(const int fd, void *const buf_, const size_t max_count);
+typedef struct Cmds {
+    const char *const *set;
+    const char *const *unset;
+} Cmds;
+Cmds firewall_rules_cmds(int is_server);
+int shell_cmd(const char *substs[][2], const char *args_str, int silent);
+const char *get_default_gw_ip(void);
+const char *get_default_ext_if_name(void);
+int tcp_opts(int fd);
+int tun_create(char if_name[IFNAMSIZ], const char *wanted_name);
+int tun_set_mtu(const char *if_name, int mtu);
+ssize_t tun_read(int fd, void *data, size_t size);
+ssize_t tun_write(int fd, const void *data, size_t size);
 
 ssize_t safe_read(const int fd, void *const buf_, size_t count, const int timeout)
 {
@@ -443,35 +522,36 @@ Cmds firewall_rules_cmds(int is_server)
 {
     if (is_server) {
 #ifdef __linux__
-        static const char
-            *set_cmds[] =
-                { "sysctl net.ipv4.ip_forward=1",
-                  "ip addr add $LOCAL_TUN_IP peer $REMOTE_TUN_IP dev $IF_NAME",
-                  "ip -6 addr add $LOCAL_TUN_IP6 peer $REMOTE_TUN_IP6/96 dev $IF_NAME",
-                  "ip link set dev $IF_NAME up",
-                  "iptables -t raw -I PREROUTING ! -i $IF_NAME -d $LOCAL_TUN_IP -m addrtype ! "
-                  "--src-type LOCAL -j DROP",
-                  "iptables -t nat -A POSTROUTING -o $EXT_IF_NAME -s $REMOTE_TUN_IP -j MASQUERADE",
-                  "iptables -t filter -A FORWARD -i $EXT_IF_NAME -o $IF_NAME -m state --state "
-                  "RELATED,ESTABLISHED -j ACCEPT",
-                  "iptables -t filter -A FORWARD -i $IF_NAME -o $EXT_IF_NAME -j ACCEPT",
-                  NULL },
-            *unset_cmds[] = {
-                "iptables -t nat -D POSTROUTING -o $EXT_IF_NAME -s $REMOTE_TUN_IP -j MASQUERADE",
-                "iptables -t filter -D FORWARD -i $EXT_IF_NAME -o $IF_NAME -m state --state "
+        static const char *set_cmds[] = {
+            "sysctl net.ipv4.ip_forward=1",
+            "ip addr add $LOCAL_TUN_IP peer $REMOTE_TUN_IP dev $IF_NAME",
+            "ip -6 addr add $LOCAL_TUN_IP6 peer $REMOTE_TUN_IP6/96 dev $IF_NAME",
+            "ip link set dev $IF_NAME up",
+            "iptables -t raw -I PREROUTING ! -i $IF_NAME -d $LOCAL_TUN_IP -m addrtype ! "
+            "--src-type LOCAL -j DROP",
+            "iptables -t nat -A POSTROUTING -o $EXT_IF_NAME -s $REMOTE_TUN_IP -j MASQUERADE",
+            "iptables -t filter -A FORWARD -i $EXT_IF_NAME -o $IF_NAME -m state --state "
                 "RELATED,ESTABLISHED -j ACCEPT",
-                "iptables -t filter -D FORWARD -i $IF_NAME -o $EXT_IF_NAME -j ACCEPT",
-                "iptables -t raw -D PREROUTING ! -i $IF_NAME -d $LOCAL_TUN_IP -m addrtype ! "
+            "iptables -t filter -A FORWARD -i $IF_NAME -o $EXT_IF_NAME -j ACCEPT",
+            NULL
+        },
+        *unset_cmds[] = {
+            "iptables -t nat -D POSTROUTING -o $EXT_IF_NAME -s $REMOTE_TUN_IP -j MASQUERADE",
+            "iptables -t filter -D FORWARD -i $EXT_IF_NAME -o $IF_NAME -m state --state "
+                "RELATED,ESTABLISHED -j ACCEPT",
+            "iptables -t filter -D FORWARD -i $IF_NAME -o $EXT_IF_NAME -j ACCEPT",
+            "iptables -t raw -D PREROUTING ! -i $IF_NAME -d $LOCAL_TUN_IP -m addrtype ! "
                 "--src-type LOCAL -j DROP",
-                NULL
-            };
+            NULL
+        };
 #elif defined(__APPLE__) || defined(__OpenBSD__) || defined(__FreeBSD__) || \
     defined(__DragonFly__) || defined(__NetBSD__)
-        static const char *set_cmds[] =
-            { "sysctl -w net.inet.ip.forwarding=1",
-              "ifconfig $IF_NAME $LOCAL_TUN_IP $REMOTE_TUN_IP up",
-              "ifconfig $IF_NAME inet6 $LOCAL_TUN_IP6 $REMOTE_TUN_IP6 prefixlen 128 up", NULL },
-                          *unset_cmds[] = { NULL, NULL };
+        static const char *set_cmds[] = {
+            "sysctl -w net.inet.ip.forwarding=1",
+            "ifconfig $IF_NAME $LOCAL_TUN_IP $REMOTE_TUN_IP up",
+            "ifconfig $IF_NAME inet6 $LOCAL_TUN_IP6 $REMOTE_TUN_IP6 prefixlen 128 up", NULL
+        },
+        *unset_cmds[] = { NULL, NULL };
 #else
         static const char *const *set_cmds = NULL, *const *unset_cmds = NULL;
 #endif
@@ -479,56 +559,57 @@ Cmds firewall_rules_cmds(int is_server)
     } else {
 #if defined(__APPLE__) || defined(__OpenBSD__) || defined(__FreeBSD__) || \
     defined(__DragonFly__) || defined(__NetBSD__)
-        static const char *set_cmds[] =
-            { "ifconfig $IF_NAME $LOCAL_TUN_IP $REMOTE_TUN_IP up",
-              "ifconfig $IF_NAME inet6 $LOCAL_TUN_IP6 $REMOTE_TUN_IP6 prefixlen 128 up",
+        static const char *set_cmds[] = {
+            "ifconfig $IF_NAME $LOCAL_TUN_IP $REMOTE_TUN_IP up",
+            "ifconfig $IF_NAME inet6 $LOCAL_TUN_IP6 $REMOTE_TUN_IP6 prefixlen 128 up",
 #ifndef NO_DEFAULT_ROUTES
-              "route add $EXT_IP $EXT_GW_IP",
-              "route add 0/1 $REMOTE_TUN_IP",
-              "route add 128/1 $REMOTE_TUN_IP",
-              "route add -inet6 -blackhole 0000::/1 $REMOTE_TUN_IP6",
-              "route add -inet6 -blackhole 8000::/1 $REMOTE_TUN_IP6",
+            "route add $EXT_IP $EXT_GW_IP",
+            "route add 0/1 $REMOTE_TUN_IP",
+            "route add 128/1 $REMOTE_TUN_IP",
+            "route add -inet6 -blackhole 0000::/1 $REMOTE_TUN_IP6",
+            "route add -inet6 -blackhole 8000::/1 $REMOTE_TUN_IP6",
 #endif
-              NULL },
-                          *unset_cmds[] = {
+            NULL
+        },
+        *unset_cmds[] = {
 #ifndef NO_DEFAULT_ROUTES
-                              "route delete $EXT_IP",
-                              "route delete 0/1",
-                              "route delete 128/1",
-                              "route delete -inet6 0000::/1",
-                              "route delete -inet6 8000::/1",
+            "route delete $EXT_IP",
+            "route delete 0/1",
+            "route delete 128/1",
+            "route delete -inet6 0000::/1",
+            "route delete -inet6 8000::/1",
 #endif
-                              NULL
-                          };
+            NULL
+        };
 #elif defined(__linux__)
-        static const char
-            *set_cmds[] =
-                { "sysctl net.ipv4.tcp_congestion_control=bbr",
-                  "ip link set dev $IF_NAME up",
-                  "iptables -t raw -I PREROUTING ! -i $IF_NAME -d $LOCAL_TUN_IP -m addrtype ! "
-                  "--src-type LOCAL -j DROP",
-                  "ip addr add $LOCAL_TUN_IP peer $REMOTE_TUN_IP dev $IF_NAME",
-                  "ip -6 addr add $LOCAL_TUN_IP6 peer $REMOTE_TUN_IP6/96 dev $IF_NAME",
-#ifndef NO_DEFAULT_ROUTES
-                  "ip route add default dev $IF_NAME table 42069",
-                  "ip -6 route add default dev $IF_NAME table 42069",
-                  "ip rule add not fwmark 42069 table 42069",
-                  "ip -6 rule add not fwmark 42069 table 42069",
-                  "ip rule add table main suppress_prefixlength 0",
-                  "ip -6 rule add table main suppress_prefixlength 0",
-#endif
-                  NULL },
-            *unset_cmds[] = {
-#ifndef NO_DEFAULT_ROUTES
-                "ip rule delete table 42069",
-                "ip -6 rule delete table 42069",
-                "ip rule delete table main suppress_prefixlength 0",
-                "ip -6 rule delete table main suppress_prefixlength 0",
-#endif
-                "iptables -t raw -D PREROUTING ! -i $IF_NAME -d $LOCAL_TUN_IP -m addrtype ! "
+        static const char *set_cmds[] = {
+            "sysctl net.ipv4.tcp_congestion_control=bbr",
+            "ip link set dev $IF_NAME up",
+            "iptables -t raw -I PREROUTING ! -i $IF_NAME -d $LOCAL_TUN_IP -m addrtype ! "
                 "--src-type LOCAL -j DROP",
-                NULL
-            };
+            "ip addr add $LOCAL_TUN_IP peer $REMOTE_TUN_IP dev $IF_NAME",
+            "ip -6 addr add $LOCAL_TUN_IP6 peer $REMOTE_TUN_IP6/96 dev $IF_NAME",
+#ifndef NO_DEFAULT_ROUTES
+            "ip route add default dev $IF_NAME table 42069",
+            "ip -6 route add default dev $IF_NAME table 42069",
+            "ip rule add not fwmark 42069 table 42069",
+            "ip -6 rule add not fwmark 42069 table 42069",
+            "ip rule add table main suppress_prefixlength 0",
+            "ip -6 rule add table main suppress_prefixlength 0",
+#endif
+            NULL
+        },
+        *unset_cmds[] = {
+#ifndef NO_DEFAULT_ROUTES
+            "ip rule delete table 42069",
+            "ip -6 rule delete table 42069",
+            "ip rule delete table main suppress_prefixlength 0",
+            "ip -6 rule delete table main suppress_prefixlength 0",
+#endif
+            "iptables -t raw -D PREROUTING ! -i $IF_NAME -d $LOCAL_TUN_IP -m addrtype ! "
+                "--src-type LOCAL -j DROP",
+            NULL
+        };
 #else
         static const char *const *set_cmds = NULL, *const *unset_cmds = NULL;
 #endif

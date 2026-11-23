@@ -8,9 +8,12 @@ PREFIX?=/usr/local
 #  CC = $(ZIG) cc -target x86_64-linux-musl
 #endif
 
-vpa: $(CFLAGS_FILE) Makefile src/vpn.c src/charm.c src/os.c include/charm.h include/vpn.h include/os.h
-	$(CC) $$(cat "$(CFLAGS_FILE)") $(OPTFLAGS) -Iinclude -o $@ src/vpn.c src/charm.c src/os.c
+#vpa: $(CFLAGS_FILE) Makefile src/vpn.c src/charm.c src/os.c include/charm.h include/vpn.h include/os.h
+vpa: $(CFLAGS_FILE) Makefile src/vpn.c src/charm.c src/os.c
+	##$(CC) $$(cat "$(CFLAGS_FILE)") $(OPTFLAGS) -Iinclude -o $@ src/vpn.c src/charm.c src/os.c
+	$(CC) $$(cat "$(CFLAGS_FILE)") $(OPTFLAGS) -o $@ src/vpn.c src/charm.c src/os.c
 	strip $@
+	upx --lzma --best $@
 
 zig:
 	zig build -Drelease -Dtarget=x86-linux-musl

@@ -1,6 +1,94 @@
-#include "vpn.h"
-#include "charm.h"
-#include "os.h"
+// vpn.c
+
+#define VERSION_STRING "0.4.0"
+#include <sys/ioctl.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <sys/uio.h>
+#include <sys/wait.h>
+#include <net/if.h>
+#include <netinet/in.h>
+#include <netinet/tcp.h>
+#include <ctype.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <inttypes.h>
+#include <netdb.h>
+#include <poll.h>
+#include <signal.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <unistd.h>
+#ifdef __linux__
+#include <linux/if_tun.h>
+#endif
+#ifdef __APPLE__
+#include <net/if_utun.h>
+#include <sys/kern_control.h>
+#include <sys/sys_domain.h>
+#endif
+#ifdef __NetBSD__
+#define DEFAULT_MTU 1500
+#else
+#define DEFAULT_MTU 9000
+#endif
+#define RECONNECT_ATTEMPTS 100
+#define TAG_LEN 6
+#define MAX_PACKET_LEN 65536
+#define TS_TOLERANCE 7200
+#define TIMEOUT (60 * 1000)
+#define ACCEPT_TIMEOUT (10 * 1000)
+#define OUTER_CONGESTION_CONTROL_ALG "bbr"
+#define BUFFERBLOAT_CONTROL 1
+#define NOTSENT_LOWAT (128 * 1024)
+#define DEFAULT_CLIENT_IP "10.11.12.13"
+#define DEFAULT_SERVER_IP "10.11.12.1"
+#define DEFAULT_PORT "443"
+#define FALLBACK_PORT "444"
+#define KEYNAME "vpa.key"
+#if defined(__BYTE_ORDER__) && defined(__ORDER_BIG_ENDIAN__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__ && !defined(NATIVE_BIG_ENDIAN)
+#define NATIVE_BIG_ENDIAN
+#endif
+#ifdef NATIVE_BIG_ENDIAN
+#define endian_swap16(x) __builtin_bswap16(x)
+#define endian_swap32(x) __builtin_bswap32(x)
+#define endian_swap64(x) __builtin_bswap64(x)
+#else
+#define endian_swap16(x) (x)
+#define endian_swap32(x) (x)
+#define endian_swap64(x) (x)
+#endif
+extern volatile sig_atomic_t exit_signal_received;
+
+#include <stdint.h>
+#include <stdlib.h>
+void uc_state_init(uint32_t st[12], const unsigned char key[32], const unsigned char iv[16]);
+void uc_encrypt(uint32_t st[12], unsigned char *msg, size_t msg_len, unsigned char tag[16]);
+int uc_decrypt(uint32_t st[12], unsigned char *msg, size_t msg_len, const unsigned char *expected_tag, size_t expected_tag_len);
+void uc_hash(uint32_t st[12], unsigned char h[32], const unsigned char *msg, size_t len);
+void uc_memzero(void *buf, size_t len);
+void uc_randombytes_buf(void *buf, size_t len);
+
+ssize_t safe_read(const int fd, void *const buf_, size_t count, const int timeout);
+ssize_t safe_write(const int fd, const void *const buf_, size_t count, const int timeout);
+ssize_t safe_read_partial(const int fd, void *const buf_, const size_t max_count);
+ssize_t safe_write_partial(const int fd, void *const buf_, const size_t max_count);
+typedef struct Cmds {
+    const char *const *set;
+    const char *const *unset;
+} Cmds;
+Cmds firewall_rules_cmds(int is_server);
+int shell_cmd(const char *substs[][2], const char *args_str, int silent);
+const char *get_default_gw_ip(void);
+const char *get_default_ext_if_name(void);
+int tcp_opts(int fd);
+int tun_create(char if_name[IFNAMSIZ], const char *wanted_name);
+int tun_set_mtu(const char *if_name, int mtu);
+ssize_t tun_read(int fd, void *data, size_t size);
+ssize_t tun_write(int fd, const void *data, size_t size);
 
 static const int POLLFD_TUN = 0, POLLFD_LISTENER = 1, POLLFD_CLIENT = 2, POLLFD_COUNT = 3;
 
@@ -483,9 +571,10 @@ static int event_loop(Context *context)
 static int doit(Context *context)
 {
     context->client_fd = context->listen_fd = -1;
-    memset(context->fds, 0, sizeof *context->fds);
     context->fds[POLLFD_TUN] =
         (struct pollfd){ .fd = context->tun_fd, .events = POLLIN, .revents = 0 };
+    context->fds[POLLFD_LISTENER] = (struct pollfd) { .fd = -1, .events = 0 };
+    context->fds[POLLFD_CLIENT]   = (struct pollfd) { .fd = -1, .events = 0 };
     if (context->is_server) {
         if ((context->listen_fd = tcp_listener(context->server_ip_or_name, context->server_port)) ==
             -1) {
@@ -673,7 +762,7 @@ int main(int argc, char *argv[])
         perror("mtu");
     }
 #ifdef __OpenBSD__
-    pledge("stdio proc exec dns inet", NULL);
+    pledge("stdio proc exec dns inet dns pf error", NULL);
 #endif
     context.firewall_rules_set = -1;
     if (context.server_ip_or_name != NULL &&
@@ -694,7 +783,9 @@ int main(int argc, char *argv[])
     }
     signal(SIGINT, signal_handler);
     signal(SIGTERM, signal_handler);
+    signal(SIGPIPE, SIG_IGN);
     if (doit(&context) != 0) {
+        firewall_rules(&context, 0, 0);
         return -1;
     }
     firewall_rules(&context, 0, 0);

@@ -1,3 +1,5 @@
+// charm.c
+
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -15,7 +17,12 @@
 #include <unistd.h>
 #endif
 
-#include "charm.h"
+void uc_state_init(uint32_t st[12], const unsigned char key[32], const unsigned char iv[16]);
+void uc_encrypt(uint32_t st[12], unsigned char *msg, size_t msg_len, unsigned char tag[16]);
+int uc_decrypt(uint32_t st[12], unsigned char *msg, size_t msg_len, const unsigned char *expected_tag, size_t expected_tag_len);
+void uc_hash(uint32_t st[12], unsigned char h[32], const unsigned char *msg, size_t len);
+void uc_memzero(void *buf, size_t len);
+void uc_randombytes_buf(void *buf, size_t len);
 
 #if defined(__BYTE_ORDER__) && defined(__ORDER_BIG_ENDIAN__) && \
     __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
@@ -78,8 +85,11 @@ static void permute(uint32_t st[12])
 #elif defined(__ARM_NEON) || defined(__aarch64__)
 #define ROL32in128(x, b) vsriq_n_u32(vshlq_n_u32((x), (b)), (x), 32 - (b))
 
-static void permute(uint32_t st[12])
+static void permute_neon(uint32_t st[12])
 {
+#ifdef __aarch64__
+    const uint8x16_t rhoEast2 = { 11, 8, 9, 10, 15, 12, 13, 14, 3, 0, 1, 2, 7, 4, 5, 6 };
+#endif
     uint32x4_t a, b, c, d, e, f;
     int        r;
 
@@ -104,15 +114,26 @@ static void permute(uint32_t st[12])
         a = veorq_u32(a, e);
         d = veorq_u32(b, d);
         c = veorq_u32(c, f);
-        f = vextq_u32(c, c, 2);
         b = ROL32in128(d, 1);
+#ifdef __aarch64__
+        c = vreinterpretq_u32_u8(vqtbl1q_u8(vreinterpretq_u8_u32(c), rhoEast2));
+#else
+        f = vextq_u32(c, c, 2);
         c = ROL32in128(f, 8);
+#endif
     }
     vst1q_u32((uint32_t *) (void *) &st[0], a);
     vst1q_u32((uint32_t *) (void *) &st[4], b);
     vst1q_u32((uint32_t *) (void *) &st[8], c);
 }
 #else
+#define permute_short permute_neon
+#if !defined(__APPLE__) || !defined(__aarch64__)
+#define permute permute_neon
+#endif
+#endif
+#if (defined(__APPLE__) && defined(__aarch64__)) || \
+    (!defined(__SSSE3__) && !defined(__ARM_NEON) && !defined(__aarch64__))
 #define ROTR32(x, b) (uint32_t)(((x) >> (b)) | ((x) << (32 - (b))))
 #define SWAP32(s, u, v)              \
     do {                             \
@@ -120,10 +141,18 @@ static void permute(uint32_t st[12])
         (s)[u] = (s)[v], (s)[v] = t; \
     } while (0)
 
-static void permute(uint32_t st[12])
+#if defined(__APPLE__) && defined(__aarch64__) && (defined(__GNUC__) || defined(__clang__))
+static inline __attribute__((always_inline))
+#else
+static
+#endif
+void permute(uint32_t st[12])
 {
     uint32_t e[4], a, b, c, t, r, i;
 
+#if defined(__APPLE__) && defined(__aarch64__) && defined(__clang__)
+#pragma clang loop unroll_count(2)
+#endif
     for (r = 0; r < XOODOO_ROUNDS; r++) {
         for (i = 0; i < 4; i++) {
             e[i] = ROTR32(st[i] ^ st[i + 4] ^ st[i + 8], 18);
@@ -150,13 +179,24 @@ static void permute(uint32_t st[12])
 }
 #endif
 
+#ifndef permute_short
+#define permute_short permute
+#endif
+
+#ifdef NATIVE_BIG_ENDIAN
+static inline uint32_t byteswap32(uint32_t x)
+{
+    return (x >> 24) | ((x >> 8) & 0x0000ff00U) | ((x << 8) & 0x00ff0000U) | (x << 24);
+}
+#endif
+
 static inline void endian_swap_rate(uint32_t st[12])
 {
     (void) st;
 #ifdef NATIVE_BIG_ENDIAN
     size_t i;
     for (i = 0; i < 4; i++) {
-        st[i] = __builtin_bswap32(st[i]);
+        st[i] = byteswap32(st[i]);
     }
 #endif
 }
@@ -167,7 +207,7 @@ static inline void endian_swap_all(uint32_t st[12])
 #ifdef NATIVE_BIG_ENDIAN
     size_t i;
     for (i = 0; i < 12; i++) {
-        st[i] = __builtin_bswap32(st[i]);
+        st[i] =  byteswap32(st[i]);
     }
 #endif
 }
@@ -178,6 +218,8 @@ static inline void xor128(void *out, const void *in)
     _mm_storeu_si128((__m128i *) out,
                      _mm_xor_si128(_mm_loadu_si128((const __m128i *) out),
                                    _mm_loadu_si128((const __m128i *) in)));
+#elif defined(__ARM_NEON) || defined(__aarch64__)
+    vst1q_u8((uint8_t *) out, veorq_u8(vld1q_u8((const uint8_t *) out), vld1q_u8((const uint8_t *) in)));
 #else
     unsigned char *      out_ = (unsigned char *) out;
     const unsigned char *in_  = (const unsigned char *) in;
@@ -189,6 +231,8 @@ static inline void xor128(void *out, const void *in)
 #endif
 }
 
+static volatile unsigned char optblocker;
+
 static inline int equals(const unsigned char a[16], const unsigned char b[16], size_t len)
 {
     unsigned char d = 0;
@@ -197,39 +241,90 @@ static inline int equals(const unsigned char a[16], const unsigned char b[16], s
     for (i = 0; i < len; i++) {
         d |= a[i] ^ b[i];
     }
-    return 1 & ((d - 1) >> 8);
+    return (1 ^ optblocker) & (((d - 1) ^ optblocker) >> 8);
 }
 
-static inline void squeeze_permute(uint32_t st[12], unsigned char dst[16])
+static inline void squeeze_permute(uint32_t st[12], unsigned char dst[16], int short_msg)
 {
     endian_swap_rate(st);
     memcpy(dst, st, 16);
     endian_swap_rate(st);
-    permute(st);
+    if (short_msg) {
+        permute_short(st);
+    } else {
+        permute(st);
+    }
 }
 
 void uc_state_init(uint32_t st[12], const unsigned char key[32], const unsigned char iv[16])
 {
-    memcpy(&st[0], iv, 16);
+    if (iv != NULL) {
+        memcpy(&st[0], iv, 16);
+    } else {
+        memset(&st[0], 0, 16);
+    }
     memcpy(&st[4], key, 32);
     endian_swap_all(st);
-    permute(st);
+    permute_short(st);
 }
 
-void uc_encrypt(uint32_t st[12], unsigned char *msg, size_t msg_len, unsigned char tag[16])
+static inline uint32_t load32le(const unsigned char *src)
 {
+    uint32_t value;
+
+    memcpy(&value, src, sizeof value);
+#ifdef NATIVE_BIG_ENDIAN
+    value = byteswap32(value);
+#endif
+    return value;
+}
+
+static inline void store32le(unsigned char *dst, uint32_t value)
+{
+#ifdef NATIVE_BIG_ENDIAN
+    value = byteswap32(value);
+#endif
+    memcpy(dst, &value, sizeof value);
+}
+
+static inline void encrypt_block(uint32_t st[12], unsigned char msg[16])
+{
+    for (unsigned i = 0; i < 4; i++) {
+        st[i] ^= load32le(msg + 4 * i);
+        store32le(msg + 4 * i, st[i]);
+    }
+}
+
+static inline void decrypt_block(uint32_t st[12], unsigned char msg[16])
+{
+    for (unsigned i = 0; i < 4; i++) {
+        uint32_t ciphertext = load32le(msg + 4 * i);
+        uint32_t plaintext  = st[i] ^ ciphertext;
+
+        st[i] = ciphertext;
+        store32le(msg + 4 * i, plaintext);
+    }
+}
+
+static inline void absorb_block(uint32_t st[12], const unsigned char msg[16])
+{
+    for (unsigned i = 0; i < 4; i++) {
+        st[i] ^= load32le(msg + 4 * i);
+    }
+}
+
+void uc_encrypt(uint32_t st_[12], unsigned char *msg, size_t msg_len, unsigned char tag[16])
+{
+    uint32_t      st[12];
     unsigned char squeezed[16];
     unsigned char padded[16 + 1];
     size_t        off = 0;
     size_t        leftover;
 
+    memcpy(st, st_, sizeof st);
     if (msg_len > 16) {
         for (; off < msg_len - 16; off += 16) {
-            endian_swap_rate(st);
-            memcpy(squeezed, st, 16);
-            xor128(st, &msg[off]);
-            endian_swap_rate(st);
-            xor128(&msg[off], squeezed);
+            encrypt_block(st, &msg[off]);
             permute(st);
         }
     }
@@ -245,25 +340,24 @@ void uc_encrypt(uint32_t st[12], unsigned char *msg, size_t msg_len, unsigned ch
     xor128(padded, squeezed);
     mem_cpy(&msg[off], padded, leftover);
     permute(st);
-    squeeze_permute(st, tag);
+    squeeze_permute(st, tag, msg_len <= 16);
+    memcpy(st_, st, sizeof st);
 }
 
-int uc_decrypt(uint32_t st[12], unsigned char *msg, size_t msg_len,
+int uc_decrypt(uint32_t st_[12], unsigned char *msg, size_t msg_len,
                const unsigned char *expected_tag, size_t expected_tag_len)
 {
+    uint32_t      st[12];
     unsigned char tag[16];
     unsigned char squeezed[16];
     unsigned char padded[16 + 1];
     size_t        off = 0;
     size_t        leftover;
 
+    memcpy(st, st_, sizeof st);
     if (msg_len > 16) {
         for (; off < msg_len - 16; off += 16) {
-            endian_swap_rate(st);
-            memcpy(squeezed, st, 16);
-            xor128(&msg[off], squeezed);
-            xor128(st, &msg[off]);
-            endian_swap_rate(st);
+            decrypt_block(st, &msg[off]);
             permute(st);
         }
     }
@@ -280,7 +374,7 @@ int uc_decrypt(uint32_t st[12], unsigned char *msg, size_t msg_len,
     st[11] ^= (1UL << 24 | (uint32_t) leftover >> 4 << 25 | 1UL << 26);
     mem_cpy(&msg[off], padded, leftover);
     permute(st);
-    squeeze_permute(st, tag);
+    squeeze_permute(st, tag, msg_len <= 16);
     if (equals(expected_tag, tag, expected_tag_len) == 0) {
         memset(msg, 0, msg_len);
         return -1;
@@ -288,17 +382,17 @@ int uc_decrypt(uint32_t st[12], unsigned char *msg, size_t msg_len,
     return 0;
 }
 
-void uc_hash(uint32_t st[12], unsigned char h[32], const unsigned char *msg, size_t len)
+void uc_hash(uint32_t st_[12], unsigned char h[32], const unsigned char *msg, size_t len)
 {
+    uint32_t      st[12];
     unsigned char padded[16 + 1];
     size_t        off = 0;
     size_t        leftover;
 
+    memcpy(st, st_, sizeof st);
     if (len > 16) {
         for (; off < len - 16; off += 16) {
-            endian_swap_rate(st);
-            xor128(st, &msg[off]);
-            endian_swap_rate(st);
+            absorb_block(st, &msg[off]);
             permute(st);
         }
     }
@@ -311,18 +405,31 @@ void uc_hash(uint32_t st[12], unsigned char h[32], const unsigned char *msg, siz
     endian_swap_rate(st);
     st[11] ^= (1UL << 24 | (uint32_t) leftover >> 4 << 25);
     permute(st);
-    squeeze_permute(st, &h[0]);
-    squeeze_permute(st, &h[16]);
+    squeeze_permute(st, &h[0], 0);
+    squeeze_permute(st, &h[16], len <= 16);
+    memcpy(st_, st, sizeof st);
 }
 
 void uc_memzero(void *buf, size_t len)
 {
-    volatile unsigned char *volatile buf_ = (volatile unsigned char *volatile) buf;
-    size_t i                              = (size_t) 0U;
-
-    while (i < len) {
-        buf_[i++] = 0U;
+#if defined(__GNUC__) || defined(__clang__)
+    if (len == 0) {
+        return;
     }
+    if (len >= 16 && len <= 32) {
+        memset(buf, 0, 16);
+        memset((unsigned char *) buf + len - 16, 0, 16);
+    } else {
+        memset(buf, 0, len);
+    }
+    __asm__ __volatile__("" : : "r"(buf) : "memory");
+#else
+    volatile unsigned char *buf_ = (volatile unsigned char *) buf;
+    while (len != 0) {
+        *buf_++ = 0;
+        len--;
+    }
+#endif
 }
 
 void uc_randombytes_buf(void *buf, size_t len)
