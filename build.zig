@@ -13,12 +13,12 @@ pub fn build(b: *std.Build) !void {
 	root_module.addCMacro("_GNU_SOURCE", "1");
 	const source_files = &.{ "src/charm.c", "src/os.c", "src/vpn.c" };
 	root_module.addCSourceFiles(.{ .files = source_files });
-	const dsvpn = b.addExecutable(.{
-		.name = "dsvpn",
+	const vpa = b.addExecutable(.{
+		.name = "vpa",
 		.root_module = root_module,
 	});
-	b.installArtifact(dsvpn);
-	const run_cmd = b.addRunArtifact(dsvpn);
+	b.installArtifact(vpa);
+	const run_cmd = b.addRunArtifact(vpa);
 	run_cmd.step.dependOn(b.getInstallStep());
 	run_cmd.addPassthruArgs();
 	const run_step = b.step("run", "Run the app");

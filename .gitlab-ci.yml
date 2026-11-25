@@ -8,9 +8,9 @@ building:
   script:
     - apt-get update -q -y
     - apt-get install -y build-essential wget git upx
-    - wget -q 'https://ziglang.org/download/0.14.0/zig-linux-x86_64-0.14.0.tar.xz'
-    - tar xf zig-linux-x86_64-0.14.0.tar.xz
-    - PATH=$PWD/zig-linux-x86_64-0.14.0:$PATH
+    - wget -q 'https://ziglang.org/download/0.17.1/zig-linux-x86_64-0.17.1.tar.xz'
+    - tar xf zig-linux-x86_64-0.17.1.tar.xz
+    - PATH=$PWD/zig-linux-x86_64-0.17.1:$PATH
     - make -B zig
     - mv zig-out/bin/vpa vpa
   artifacts:
